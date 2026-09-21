@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 43 74% 54%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 43 74% 54%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-court-dark text-white font-korean;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  /* 법정 스타일 카드 */
+  .court-card {
+    @apply bg-white/5 backdrop-blur-sm border border-court-gold/20 rounded-xl;
+  }
+  
+  /* 골드 버튼 */
+  .btn-court {
+    @apply bg-court-gold text-court-dark font-bold py-3 px-6 rounded-lg
+           hover:bg-court-gold/80 transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           active:scale-95;
+  }
+  
+  /* 아웃라인 버튼 */
+  .btn-outline-court {
+    @apply border border-court-gold text-court-gold font-bold py-3 px-6 rounded-lg
+           hover:bg-court-gold/10 transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           active:scale-95;
+  }
+  
+  /* 법정 입력 필드 */
+  .input-court {
+    @apply bg-white/10 border border-white/20 text-white rounded-lg px-4 py-3
+           focus:outline-none focus:border-court-gold focus:ring-1 focus:ring-court-gold
+           placeholder:text-white/40 w-full;
+  }
+  
+  /* 채팅 말풍선 - 학생 */
+  .bubble-student {
+    @apply bg-court-royal/60 border border-court-gold/30 rounded-xl rounded-br-sm
+           px-4 py-3 max-w-[85%] ml-auto;
+  }
+  
+  /* 채팅 말풍선 - AI */
+  .bubble-ai {
+    @apply bg-white/10 border border-white/20 rounded-xl rounded-bl-sm
+           px-4 py-3 max-w-[85%];
+  }
+  
+  /* 판정 뱃지 */
+  .badge-A { @apply bg-green-500/20 text-green-400 border border-green-500/40; }
+  .badge-B { @apply bg-blue-500/20 text-blue-400 border border-blue-500/40; }
+  .badge-C { @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/40; }
+  .badge-D { @apply bg-red-500/20 text-red-400 border border-red-500/40; }
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.7);
+}
+
+/* 망치 애니메이션 */
+.gavel-icon {
+  display: inline-block;
+  animation: gavel 0.8s ease-in-out infinite;
+  transform-origin: bottom right;
+}
