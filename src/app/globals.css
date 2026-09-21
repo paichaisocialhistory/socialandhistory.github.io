@@ -1,0 +1,117 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    'Noto Sans KR', system-ui, sans-serif;
+
+  --color-pitch-50: #f0f9f3;
+  --color-pitch-100: #dcf2e4;
+  --color-pitch-200: #bbe4cb;
+  --color-pitch-500: #2f9e5e;
+  --color-pitch-600: #22804a;
+  --color-pitch-700: #1b663b;
+  --color-pitch-900: #0f3a22;
+}
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e3e6ea;
+  --text: #16181d;
+  --muted: #646b78;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216;
+    --surface: #171b21;
+    --border: #2a3039;
+    --text: #e8eaed;
+    --muted: #9aa2b1;
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition;
+
+  &:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+}
+
+@layer components {
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+
+  /* Tailwind v4 에서는 커스텀 클래스를 @apply 할 수 없으므로 @utility 로 선언한다. */
+  .btn-primary {
+    @apply btn bg-pitch-600 text-white hover:bg-pitch-700;
+  }
+
+  .btn-secondary {
+    @apply btn border text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/5;
+    border-color: var(--border);
+  }
+
+  .btn-danger {
+    @apply btn border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40;
+  }
+
+  .field {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .field:focus {
+    @apply ring-2 ring-pitch-500/40;
+    border-color: var(--color-pitch-500);
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium;
+  }
+
+  .table-wrap {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+  }
+
+  .data-table {
+    @apply w-full min-w-[34rem] border-collapse text-sm;
+  }
+
+  .data-table th {
+    @apply whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table td {
+    @apply px-3 py-2.5 align-middle;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}

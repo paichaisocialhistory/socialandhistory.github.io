@@ -1,0 +1,39 @@
+# Supabase 무료 프로젝트는 7일간 API 요청이 없으면 자동 일시중지된다.
+# 3일마다 가벼운 조회를 보내 프로젝트를 깨어 있는 상태로 유지한다.
+#
+# 필요한 저장소 시크릿:
+#   SUPABASE_URL       - https://xxxx.supabase.co
+#   SUPABASE_ANON_KEY  - anon 공개 키
+#
+# Supabase Pro 로 전환하면 이 워크플로우는 필요 없다.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '17 3 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY 시크릿이 설정되지 않았습니다."
+            exit 1
+          fi
+
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/teams?select=id&limit=1")
+
+          echo "HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::예상치 못한 응답 코드입니다."
+            exit 1
+          fi
