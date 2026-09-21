@@ -3,8 +3,9 @@
 -- ============================================
 
 -- 테스트 교사
+-- 비밀번호: password (HMAC-SHA256)
 INSERT INTO teachers (id, email, password_hash, name) VALUES
-(uuid_generate_v4(), 'teacher@school.kr', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMN0.OWJ3/BUEbUHFHJ4L2xdaO', '김선생');
+(uuid_generate_v4(), 'teacher@school.kr', '4a5437e4d69bb64afd4ea98efc9d2d7d42fae52c22ec387aa0de4809096ce48d', '김선생');
 
 -- 테스트 학급
 INSERT INTO classes (id, teacher_id, class_name, class_code, settings)

@@ -1,18 +1,27 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import hashlib
+import hmac
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt 호환성 이슈로 SHA-256 + HMAC 사용
+_HASH_SECRET = settings.SECRET_KEY.encode()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return hmac.compare_digest(
+        get_password_hash(plain_password),
+        hashed_password
+    )
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return hmac.new(
+        _HASH_SECRET,
+        password.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
