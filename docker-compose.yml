@@ -1,7 +1,4 @@
-version: '3.9'
-
 services:
-  # PostgreSQL with pgvector
   postgres:
     image: pgvector/pgvector:pg16
     container_name: hist-court-db
@@ -13,14 +10,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # FastAPI Backend
   backend:
     build:
       context: ./backend
@@ -41,25 +36,6 @@ services:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Next.js Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: hist-court-frontend
-    environment:
-      NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
-      NEXT_PUBLIC_APP_NAME: AI 역사 모의 법정
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-
-  # Ollama (Qwen3 14B)
   ollama:
     image: ollama/ollama:latest
     container_name: hist-court-ollama
@@ -67,32 +43,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    # GPU 없을 경우 위 deploy 섹션 제거
-
-  # Ollama 모델 초기화
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: hist-court-ollama-init
-    depends_on:
-      - ollama
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["sleep 10 && ollama pull qwen3:14b"]
-    volumes:
-      - ollama_data:/root/.ollama
 
 volumes:
   postgres_data:
   ollama_data:
-
-networks:
-  default:
-    name: hist-court-network
