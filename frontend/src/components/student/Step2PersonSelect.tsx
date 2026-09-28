@@ -86,9 +86,8 @@ export function Step2PersonSelect() {
               <div className="w-16 h-16 rounded-full bg-court-royal/60 border-2 border-court-gold/40 flex items-center justify-center text-3xl flex-shrink-0">
                 {person.name === '김옥균' && '🎭'}
                 {person.name === '전봉준' && '⚔️'}
-                {person.name === '안중근' && '🦅'}
-                {person.name === '명성황후' && '👑'}
-                {!['김옥균', '전봉준', '안중근', '명성황후'].includes(person.name) && '👤'}
+                {person.name === '최익현' && '📜'}
+                {!['김옥균', '전봉준', '최익현'].includes(person.name) && '👤'}
               </div>
               
               <div className="flex-1 min-w-0">

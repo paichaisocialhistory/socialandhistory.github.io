@@ -39,39 +39,22 @@ INSERT INTO persons (id, name, category, period, summary, content, image_url) VA
 }',
 '/images/persons/jeon-bongjun.jpg'),
 
--- 안중근
-(uuid_generate_v4(), '안중근', '독립운동', '조선/대한제국 (1879-1910)',
-'이토 히로부미를 저격한 독립운동가로 동양평화론을 주창하였다.',
+-- 최익현
+(uuid_generate_v4(), '최익현', '위정척사/의병', '조선 후기~대한제국 (1833-1906)',
+'위정척사파 유학자로 개항과 단발령에 반대하고, 을사늑약 이후 의병을 일으켰다.',
 '{
-  "birth": "1879년",
-  "death": "1910년",
-  "achievements": ["이토 히로부미 저격 (1909)", "동양평화론 저술", "대한의군 참모중장 활동"],
-  "background": "황해도 해주 출신으로, 을사늑약 이후 독립운동에 투신하였다. 1909년 하얼빈 역에서 이토 히로부미를 저격하고 체포되어 뤼순 감옥에서 순국하였다. 미완성 유작 동양평화론을 남겼다.",
-  "trial_context": "의거의 정당성, 동양평화론의 의미, 테러와 의거의 경계에 대한 재판",
+  "birth": "1833년",
+  "death": "1906년",
+  "achievements": ["흥선대원군 비판 상소 (1873)", "강화도 조약 반대 도끼 상소 (1876)", "단발령 반대 (1895)", "을사의병 봉기 (1906)"],
+  "background": "호는 면암이며, 이항로의 제자로 위정척사 사상을 이어받았다. 1873년 흥선대원군을 비판하는 상소를 올려 대원군이 물러나는 계기를 만들었다. 1876년 도끼를 들고 궁궐 앞에 엎드려 강화도 조약 체결에 반대하다 흑산도로 유배되었고, 1895년에는 단발령에 반대하였다. 1905년 을사늑약이 체결되자 이듬해 전라북도 태인에서 의병을 일으켰으나, 같은 동포인 진위대와 싸울 수 없다며 스스로 해산하였다. 체포되어 대마도(쓰시마)로 끌려갔고 그곳에서 세상을 떠났다.",
+  "trial_context": "위정척사 사상의 정당성, 개항과 근대화 반대의 책임, 의병 항쟁의 의미에 대한 재판",
   "roles": {
-    "defendant": "국제법에 따라 전쟁 포로이며, 침략자를 처단한 의거였다",
-    "prosecutor": "법적 절차 없이 살인을 저지른 테러리스트",
-    "defender": "조국의 독립을 위해 목숨을 바친 진정한 영웅"
+    "defendant": "외세의 침략에 맞서 나라의 자주와 전통을 지키려 한 정당한 저항이었다",
+    "prosecutor": "시대의 변화를 거부하고 개항과 근대화를 가로막은 완고한 보수주의자",
+    "defender": "목숨을 걸고 끝까지 국권을 지키려 한 선비이자 의병장"
   }
 }',
-'/images/persons/ahn-junggeun.jpg'),
-
--- 명성황후
-(uuid_generate_v4(), '명성황후', '왕실/외교', '조선/대한제국 (1851-1895)',
-'조선 고종의 왕비로 아관파천을 주도하며 열강 외교를 펼쳤다.',
-'{
-  "birth": "1851년",
-  "death": "1895년",
-  "achievements": ["친러 외교 정책 추진", "아관파천 계획", "열강 견제 외교"],
-  "background": "여흥 민씨 출신으로 고종의 왕비가 되어 조정의 실권을 장악하였다. 개화 정책과 열강 외교를 통해 조선의 자주성을 지키려 했으나, 1895년 일본 낭인들에 의해 경복궁에서 시해되었다(을미사변).",
-  "trial_context": "열강 외교의 정당성, 민씨 세력의 권력 독점, 을미사변의 책임 소재에 대한 재판",
-  "roles": {
-    "defendant": "조선의 자주독립을 지키기 위한 불가피한 외교였다",
-    "prosecutor": "민씨 일족의 권력 유지를 위해 국가를 이용했다",
-    "defender": "여성으로서 혼란의 시대에 나라를 지키려 했던 지도자"
-  }
-}',
-'/images/persons/queen-myeongseong.jpg');
+'/images/persons/choi-ikhyeon.jpg');
 
 -- 김옥균 퀴즈
 INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation) 
@@ -141,27 +124,43 @@ SELECT uuid_generate_v4(), p.id,
   '전봉준은 키가 작고 눈빛이 날카롭고 형형하여 민중들이 녹두처럼 작지만 강하다고 하여 녹두장군이라 불렀다.'
 FROM persons p WHERE p.name = '전봉준';
 
--- 안중근 퀴즈
+-- 최익현 퀴즈
 INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation)
 SELECT uuid_generate_v4(), p.id,
-  '안중근이 이토 히로부미를 저격한 장소는?',
-  '["뤼순", "하얼빈", "블라디보스토크", "연해주"]',
-  1,
-  '1909년 10월 26일 안중근은 중국 하얼빈 역에서 을사늑약을 강제한 이토 히로부미를 저격하였다. 이토 히로부미는 러시아 재무장관을 만나기 위해 하얼빈을 방문하던 중이었다.'
-FROM persons p WHERE p.name = '안중근';
+  '최익현이 1876년 도끼를 들고 궁궐 앞에 엎드려 체결에 반대한 조약은?',
+  '["강화도 조약", "을사늑약", "제물포 조약", "한일 병합 조약"]',
+  0,
+  '1876년 일본과 강화도 조약(조일수호조규)을 맺으려 하자, 최익현은 도끼를 들고 궁궐 앞에 엎드려 받아들이지 않으려면 자신의 목을 치라며 반대 상소를 올렸다. 이 일로 흑산도에 유배되었다.'
+FROM persons p WHERE p.name = '최익현';
 
 INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation)
 SELECT uuid_generate_v4(), p.id,
-  '안중근이 미완성으로 남긴 저서의 제목은?',
-  '["독립론", "동양평화론", "항일투쟁론", "대한독립선언"]',
-  1,
-  '안중근은 뤼순 감옥에서 사형을 기다리며 동양평화론을 집필하였으나, 1910년 3월 26일 순국으로 인해 미완성으로 남겨졌다. 이 책에서 한·중·일 3국의 평화 협력을 주장하였다.'
-FROM persons p WHERE p.name = '안중근';
-
-INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation)
-SELECT uuid_generate_v4(), p.id,
-  '안중근이 의거 직전 서명한 단체의 이름은?',
-  '["신민회", "독립협회", "단지동맹", "대한의군"]',
+  '최익현이 이어받은, 성리학 질서를 지키고 서양 문물을 배척하자는 사상은?',
+  '["개화사상", "동학", "위정척사 사상", "실학"]',
   2,
-  '안중근은 1909년 함께 의거를 결의한 동지들과 손가락을 잘라 혈서로 단지동맹(斷指同盟)을 맺었다. 이는 조국 독립을 위해 목숨을 바치겠다는 결의를 다진 것이다.'
-FROM persons p WHERE p.name = '안중근';
+  '위정척사(衛正斥邪)는 바른 것(성리학 질서)을 지키고 사악한 것(서양 문물과 천주교)을 물리친다는 뜻이다. 최익현은 스승 이항로의 뒤를 이은 위정척사파의 대표 인물이다.'
+FROM persons p WHERE p.name = '최익현';
+
+INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation)
+SELECT uuid_generate_v4(), p.id,
+  '1873년 최익현의 상소를 계기로 권력에서 물러난 인물은?',
+  '["김옥균", "흥선대원군", "전봉준", "고종"]',
+  1,
+  '최익현은 1873년 흥선대원군의 정책을 비판하는 상소를 올렸고, 이를 계기로 흥선대원군이 물러나고 고종이 직접 나라를 다스리게 되었다.'
+FROM persons p WHERE p.name = '최익현';
+
+INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation)
+SELECT uuid_generate_v4(), p.id,
+  '1905년 을사늑약이 체결된 뒤 최익현이 한 일은?',
+  '["갑신정변을 일으켰다", "독립협회를 만들었다", "일본으로 망명하였다", "의병을 일으켰다"]',
+  3,
+  '을사늑약으로 외교권을 빼앗기자, 최익현은 70이 넘은 나이에 1906년 전라북도 태인에서 의병을 일으켰다. 이를 을사의병이라고 한다.'
+FROM persons p WHERE p.name = '최익현';
+
+INSERT INTO quiz_items (id, person_id, question, choices, answer, explanation)
+SELECT uuid_generate_v4(), p.id,
+  '의병 활동 중 체포된 최익현이 끌려가 세상을 떠난 곳은?',
+  '["흑산도", "상하이", "대마도(쓰시마)", "뤼순"]',
+  2,
+  '최익현은 체포된 뒤 일본 대마도(쓰시마)로 끌려갔고, 1906년 그곳에서 세상을 떠났다.'
+FROM persons p WHERE p.name = '최익현';
