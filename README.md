@@ -15,7 +15,7 @@ AI 역사 모의 법정은 중학생이 역사 속 인물을 재판하는 형식
 | 3️⃣ | **학습** | 선택한 인물의 역사적 정보 학습 |
 | 4️⃣ | **퀴즈** | 학습 확인 퀴즈 (60% 이상 합격) |
 | 5️⃣ | **역할 선택** | 검사/변호인/판사/증인/피고인 선택 |
-| 6️⃣ | **AI 모의재판** | Qwen3 AI와 5턴 법정 대화 |
+| 6️⃣ | **AI 모의재판** | Claude AI와 5턴 법정 대화 |
 | 7️⃣ | **느낀점 제출** | 활동 소감 작성 및 Google Sheets 저장 |
 
 ---
@@ -38,8 +38,8 @@ AI 역사 모의 법정은 중학생이 역사 속 인물을 재판하는 형식
 - **PostgreSQL 16** + **pgvector** 확장
 
 ### AI
-- **Ollama** 로컬 LLM 서버
-- **Qwen3 14B** 모델 (역사 검증 + 역할극)
+- **Claude API** (Anthropic, 기본 모델 `claude-haiku-4-5`)
+- 역사 검증 + 역할극 + 판결문 생성
 
 ### 기타
 - **Docker Compose** (전체 스택 실행)
@@ -56,29 +56,23 @@ AI 역사 모의 법정은 중학생이 역사 속 인물을 재판하는 형식
 # Docker & Docker Compose 설치 확인
 docker --version
 docker compose --version
-
-# Ollama 설치 (별도 실행 시)
-bash scripts/setup_ollama.sh
 ```
 
 ### 2. 환경 변수 설정
 
 ```bash
 cp .env.example .env
-# .env 파일 편집 (SECRET_KEY, DATABASE_URL 등)
+# .env 파일 편집 (ANTHROPIC_API_KEY, SECRET_KEY 등)
 ```
 
 ### 3. Docker Compose로 실행
 
 ```bash
-# 전체 스택 실행 (DB + Backend + Frontend + Ollama)
+# DB + Backend 실행 (Frontend는 frontend 폴더에서 npm run dev)
 docker compose up -d
 
 # 로그 확인
 docker compose logs -f
-
-# Ollama 모델 다운로드 (최초 1회, 약 8GB)
-docker exec hist-court-ollama ollama pull qwen3:14b
 ```
 
 ### 4. 데이터베이스 초기화
@@ -89,6 +83,9 @@ docker exec -i hist-court-db psql -U postgres hist_court < database/migrations/0
 
 # 시드 데이터 삽입
 docker exec -i hist-court-db psql -U postgres hist_court < database/seeds/001_seed_data.sql
+
+# (로컬 테스트용) 테스트 교사 계정과 학급
+docker exec -i hist-court-db psql -U postgres hist_court < database/seeds/002_local_test_account.sql
 ```
 
 ### 5. 접속
@@ -98,7 +95,6 @@ docker exec -i hist-court-db psql -U postgres hist_court < database/seeds/001_se
 | 학생 메인 | http://localhost:3000 |
 | 교사 대시보드 | http://localhost:3000/teacher |
 | FastAPI Docs | http://localhost:8000/docs |
-| Ollama API | http://localhost:11434 |
 
 ---
 
@@ -128,7 +124,7 @@ hist-court/
 │       ├── models/          # SQLAlchemy 모델
 │       ├── schemas/         # Pydantic 스키마
 │       ├── services/
-│       │   ├── ai_service.py   # Ollama Qwen3 연동
+│       │   ├── ai_service.py   # Claude API 연동
 │       │   └── sheet_service.py # Google Sheets 연동
 │       └── core/
 │           ├── config.py    # 환경 변수
@@ -140,7 +136,6 @@ hist-court/
 │   └── seeds/               # 시드 데이터
 │
 ├── scripts/
-│   ├── setup_ollama.sh      # Ollama 설치 스크립트
 │   └── google_apps_script.js # Google Sheets 스크립트
 │
 ├── docker-compose.yml
@@ -180,11 +175,15 @@ hist-court/
 
 ---
 
-## 👩‍🏫 교사 테스트 계정
+## 👩‍🏫 교사 테스트 계정 (로컬 전용)
+
+`database/seeds/002_local_test_account.sql`을 넣었을 때만 생기는 계정입니다.
+`SECRET_KEY`가 기본값일 때만 로그인되며, **인터넷 배포 DB에는 넣지 마세요.**
+배포 환경에서는 `TEACHER_EMAIL` / `TEACHER_PASSWORD` 환경 변수로 교사 계정이 만들어집니다.
 
 ```
 이메일: teacher@school.kr
-비밀번호: password (bcrypt 해시 저장)
+비밀번호: password
 학급 코드: HIST2-0921
 ```
 
@@ -214,15 +213,12 @@ GET  /api/teacher/classes/{id}/students  # 학생 현황
 | PostgreSQL | hist-court-db | 5432 |
 | FastAPI | hist-court-backend | 8000 |
 | Next.js | hist-court-frontend | 3000 |
-| Ollama | hist-court-ollama | 11434 |
 
 ---
 
-## ⚠️ 주의사항
+## 🌐 인터넷 배포
 
-- **Ollama qwen3:14b** 모델은 약 8GB 용량
-- GPU 없이도 동작하지만 CPU 모드에서는 응답이 느릴 수 있음
-- 최소 RAM: 16GB (CPU 모드), GPU 모드: VRAM 8GB 이상
+[DEPLOY.md](DEPLOY.md)를 참고하세요. (Vercel + Render + Neon + Claude API)
 
 ---
 

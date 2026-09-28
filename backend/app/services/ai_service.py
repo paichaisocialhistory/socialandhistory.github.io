@@ -1,17 +1,15 @@
 """
-AI 서비스 - Ollama Qwen3 연동
+AI 서비스 - Claude API 연동
 역사 검증 및 재판 역할극 처리
 """
-import json
-import asyncio
-from typing import List, Dict, Any, Optional
-from openai import AsyncOpenAI
+from typing import List, Dict, Any, Literal
+import anthropic
+from pydantic import BaseModel
 from app.core.config import settings
 
-# Ollama를 OpenAI 호환 API로 사용
-client = AsyncOpenAI(
-    base_url=f"{settings.OLLAMA_BASE_URL}/v1",
-    api_key="ollama",
+client = anthropic.AsyncAnthropic(
+    api_key=settings.ANTHROPIC_API_KEY or None,
+    timeout=40.0,
 )
 
 MAX_TURNS = 5
@@ -32,6 +30,16 @@ OPPOSING_ROLES = {
     "증인": ["검사", "변호인"],
     "피고인": ["검사", "판사"],
 }
+
+
+class ValidationResult(BaseModel):
+    approved: bool
+    branch: Literal["A", "B", "C", "D"]
+    reason: str
+
+
+def _response_text(response: anthropic.types.Message) -> str:
+    return "".join(b.text for b in response.content if b.type == "text").strip()
 
 
 async def validate_history_message(
@@ -58,33 +66,23 @@ async def validate_history_message(
 역할: {role}
 학생발언: {message}
 
-JSON 형식으로만 출력:
-{{"approved": true/false, "branch": "A/B/C/D", "reason": "판정 이유 한 문장"}}"""
+approved, branch(A/B/C/D), reason(판정 이유 한 문장)을 JSON으로 출력하라."""
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.OLLAMA_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.1,
-            max_tokens=200,
+        response = await client.messages.parse(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=300,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            output_format=ValidationResult,
         )
-        
-        content = response.choices[0].message.content.strip()
-        
-        # JSON 추출 (마크다운 코드블록 제거)
-        if "```" in content:
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        
-        result = json.loads(content.strip())
+        result = response.parsed_output
+        if result is None:
+            raise ValueError(f"검증 결과 없음 (stop_reason={response.stop_reason})")
         return {
-            "approved": result.get("approved", False),
-            "branch": result.get("branch", "D"),
-            "reason": result.get("reason", ""),
+            "approved": result.approved,
+            "branch": result.branch,
+            "reason": result.reason,
         }
     except Exception as e:
         # 파싱 실패 시 기본값 반환
@@ -137,17 +135,16 @@ async def generate_court_responses(
 {ai_role}로서 한 번만 짧게 응답하라. 캐릭터 대사만 반환하라."""
 
         try:
-            response = await client.chat.completions.create(
-                model=settings.OLLAMA_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.7,
-                max_tokens=150,
+            response = await client.messages.create(
+                model=settings.CLAUDE_MODEL,
+                max_tokens=400,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
             )
             
-            message = response.choices[0].message.content.strip()
+            message = _response_text(response)
+            if not message:
+                raise ValueError(f"빈 응답 (stop_reason={response.stop_reason})")
             # 불필요한 prefix 제거
             for prefix in [f"{ai_role}:", f"[{ai_role}]", f"({ai_role})"]:
                 if message.startswith(prefix):
@@ -193,32 +190,30 @@ async def generate_verdict(
 중학교 학생이 이해할 수 있는 수준으로 작성하라."""
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.OLLAMA_MODEL,
+        response = await client.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=800,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=300,
         )
-        return response.choices[0].message.content.strip()
+        verdict = _response_text(response)
+        if not verdict:
+            raise ValueError(f"빈 응답 (stop_reason={response.stop_reason})")
+        return verdict
     except Exception as e:
         print(f"Verdict generation error: {e}")
         return f"본 법정은 {person}에 관한 역사적 재판을 마무리합니다. 학생 여러분은 이 재판을 통해 역사의 다양한 시각을 이해하는 기회가 되었기를 바랍니다."
 
 
-async def check_ollama_health() -> Dict[str, Any]:
-    """Ollama 서버 상태 확인"""
+async def check_ai_health() -> Dict[str, Any]:
+    """Claude API 연결 및 모델 확인 (토큰 비용 없음)"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"status": "error", "error": "ANTHROPIC_API_KEY가 설정되지 않았습니다.", "model": settings.CLAUDE_MODEL}
     try:
-        models = await client.models.list()
-        model_names = [m.id for m in models.data]
-        return {
-            "status": "ok",
-            "models": model_names,
-            "target_model": settings.OLLAMA_MODEL,
-            "model_available": settings.OLLAMA_MODEL in model_names,
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "model_available": False,
-        }
+        model = await client.models.retrieve(settings.CLAUDE_MODEL)
+        return {"status": "ok", "model": model.id}
+    except anthropic.AuthenticationError:
+        return {"status": "error", "error": "API 키가 올바르지 않습니다.", "model": settings.CLAUDE_MODEL}
+    except anthropic.NotFoundError:
+        return {"status": "error", "error": "모델 이름이 올바르지 않습니다.", "model": settings.CLAUDE_MODEL}
+    except anthropic.APIError as e:
+        return {"status": "error", "error": str(e), "model": settings.CLAUDE_MODEL}

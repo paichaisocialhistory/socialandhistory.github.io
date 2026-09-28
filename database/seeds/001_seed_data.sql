@@ -2,21 +2,6 @@
 -- 시드 데이터 - 역사 인물 및 퀴즈
 -- ============================================
 
--- 테스트 교사
--- 비밀번호: password (HMAC-SHA256)
-INSERT INTO teachers (id, email, password_hash, name) VALUES
-(uuid_generate_v4(), 'teacher@school.kr', '4a5437e4d69bb64afd4ea98efc9d2d7d42fae52c22ec387aa0de4809096ce48d', '김선생');
-
--- 테스트 학급
-INSERT INTO classes (id, teacher_id, class_name, class_code, settings)
-SELECT 
-  uuid_generate_v4(),
-  id,
-  '2학년 3반',
-  'HIST2-0921',
-  '{"maxStudents": 35, "trialTurns": 5}'
-FROM teachers WHERE email = 'teacher@school.kr';
-
 -- 역사 인물 데이터
 INSERT INTO persons (id, name, category, period, summary, content, image_url) VALUES
 

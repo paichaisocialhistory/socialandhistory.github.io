@@ -1,0 +1,32 @@
+# Render 배포 설정 (백엔드 FastAPI 서버)
+# Render 대시보드 > New > Blueprint 에서 이 저장소를 선택하면 자동으로 읽습니다.
+services:
+  - type: web
+    name: hist-court-backend
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CLAUDE_MODEL
+        value: claude-haiku-4-5
+      - key: ALLOW_TEACHER_REGISTRATION
+        value: "false"
+      # 아래 값들은 Render 화면에서 직접 입력합니다.
+      - key: DATABASE_URL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TEACHER_EMAIL
+        sync: false
+      - key: TEACHER_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
