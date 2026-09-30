@@ -7,9 +7,9 @@ from sqlalchemy import select
 import uuid
 from datetime import datetime
 from app.core.database import get_db
-from app.models.models import Reflection, Student, Activity, Class, SheetLog, Trial, QuizAttempt
+from app.models.models import Reflection, Student, Activity, Class, SheetLog
 from app.schemas.schemas import ReflectionCreate, ReflectionResponse
-from app.services.sheet_service import sync_to_google_sheet
+from app.services.sheet_service import build_sheet_payload, sync_to_google_sheet
 
 router = APIRouter(prefix="/reflection", tags=["reflection"])
 
@@ -61,56 +61,20 @@ async def submit_reflection(
     
     await db.flush()
     
-    # Google Sheets 동기화 데이터 준비
+    # Google Sheets 동기화 (학급에 시트 주소가 있을 때만)
     sheet_synced = False
-    
-    # 학급의 시트 URL 조회
     result = await db.execute(
         select(Class).where(Class.id == student.class_id)
     )
     class_ = result.scalar_one_or_none()
-    
+
     if class_ and class_.sheet_url:
-        # 퀴즈 점수 조회
-        result = await db.execute(
-            select(QuizAttempt).where(
-                QuizAttempt.student_id == student.id
-            ).order_by(QuizAttempt.created_at.desc())
-        )
-        latest_quiz = result.scalar_one_or_none()
-        
-        # 재판 정보 조회
-        result = await db.execute(
-            select(Trial).where(
-                Trial.student_id == student.id
-            ).order_by(Trial.started_at.desc()).limit(1)
-        )
-        latest_trial = result.scalar_one_or_none()
-        
-        payload = {
-            "name": student.name,
-            "grade": student.grade,
-            "classNo": student.class_no,
-            "studentNo": student.student_no,
-            "person": activity.step_data.get("selectedPerson", "") if activity else "",
-            "role": latest_trial.selected_role if latest_trial else "",
-            "score": latest_quiz.score if latest_quiz else 0,
-            "passed": latest_quiz.passed if latest_quiz else False,
-            "trialCompleted": latest_trial.status == "completed" if latest_trial else False,
-            "totalTurns": latest_trial.current_turn if latest_trial else 0,
-            "reflection1": data.reflection1,
-            "reflection2": data.reflection2,
-        }
-        
-        sync_result = await sync_to_google_sheet(
-            sheet_url=class_.sheet_url,
-            student_id=str(student.id),
-            payload=payload,
-        )
-        sheet_synced = sync_result.get("success", False)
-        
+        payload = await build_sheet_payload(db, student)
+        sync_result = await sync_to_google_sheet(class_.sheet_url, payload)
+        sheet_synced = sync_result["success"]
+
         # 동기화 로그 저장
-        log = SheetLog(
+        db.add(SheetLog(
             id=uuid.uuid4(),
             student_id=student.id,
             status="success" if sheet_synced else "failed",
@@ -118,8 +82,7 @@ async def submit_reflection(
             payload=payload,
             error_message=sync_result.get("error") if not sheet_synced else None,
             synced_at=datetime.now() if sheet_synced else None,
-        )
-        db.add(log)
+        ))
     
     await db.commit()
     

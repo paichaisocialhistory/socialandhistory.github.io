@@ -96,6 +96,9 @@ export const teacherApi = {
       params: { sheet_url: sheetUrl },
     }),
   
+  syncSheet: (classId: string) =>
+    api.post(`/teacher/classes/${classId}/sheet/sync`, null, { timeout: 180000 }),
+
   getStudents: (classId: string) =>
     api.get(`/teacher/classes/${classId}/students`),
 }
