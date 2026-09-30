@@ -10,7 +10,8 @@ from datetime import timedelta
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, decode_access_token
-from app.models.models import Teacher, Class, Student, Activity, QuizAttempt, Trial
+from app.models.models import Teacher, Class, Student, Activity, QuizAttempt, Trial, Reflection
+from app.services.sheet_service import build_sheet_payload, check_sheet_url, sync_to_google_sheet
 from app.schemas.schemas import (
     TeacherLogin, TeacherRegister, TokenResponse,
     ClassCreate, ClassResponse, StudentProgress,
@@ -166,6 +167,16 @@ async def create_class(
     )
 
 
+async def _get_own_class(db: AsyncSession, teacher: Teacher, class_id: str) -> Class:
+    result = await db.execute(
+        select(Class).where(Class.id == class_id, Class.teacher_id == teacher.id)
+    )
+    class_ = result.scalar_one_or_none()
+    if not class_:
+        raise HTTPException(status_code=404, detail="학급을 찾을 수 없습니다.")
+    return class_
+
+
 @router.put("/classes/{class_id}/sheet")
 async def update_sheet_url(
     class_id: str,
@@ -173,18 +184,51 @@ async def update_sheet_url(
     teacher: Teacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
-    """학급 Google Sheet URL 업데이트"""
-    result = await db.execute(
-        select(Class).where(Class.id == class_id, Class.teacher_id == teacher.id)
-    )
-    class_ = result.scalar_one_or_none()
-    if not class_:
-        raise HTTPException(status_code=404, detail="학급을 찾을 수 없습니다.")
-    
-    class_.sheet_url = sheet_url
+    """학급 Google Sheet(Apps Script) URL 저장 - 저장 전에 연결을 확인한다. 빈 값이면 연동 해제."""
+    class_ = await _get_own_class(db, teacher, class_id)
+    sheet_url = sheet_url.strip()
+
+    if sheet_url:
+        problem = await check_sheet_url(sheet_url)
+        if problem:
+            raise HTTPException(status_code=400, detail=problem)
+
+    class_.sheet_url = sheet_url or None
     await db.commit()
     
     return {"success": True, "sheetUrl": sheet_url}
+
+
+@router.post("/classes/{class_id}/sheet/sync")
+async def sync_class_to_sheet(
+    class_id: str,
+    teacher: Teacher = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db),
+):
+    """느낀점을 제출한 학생들의 결과를 시트로 다시 보낸다 (같은 학생은 한 줄로 갱신됨)"""
+    class_ = await _get_own_class(db, teacher, class_id)
+    if not class_.sheet_url:
+        raise HTTPException(status_code=400, detail="먼저 Google Sheets 주소를 저장하세요.")
+
+    result = await db.execute(
+        select(Student)
+        .join(Reflection, Reflection.student_id == Student.id)
+        .where(Student.class_id == class_.id)
+        .order_by(Student.class_no, Student.student_no)
+    )
+    students = result.scalars().all()
+
+    sent, failed, last_error = 0, 0, None
+    for student in students:
+        payload = await build_sheet_payload(db, student)
+        sync_result = await sync_to_google_sheet(class_.sheet_url, payload)
+        if sync_result["success"]:
+            sent += 1
+        else:
+            failed += 1
+            last_error = sync_result.get("error")
+
+    return {"total": len(students), "sent": sent, "failed": failed, "error": last_error}
 
 
 @router.get("/classes/{class_id}/students", response_model=list[StudentProgress])
@@ -221,7 +265,7 @@ async def get_students_progress(
         quiz_result = await db.execute(
             select(QuizAttempt).where(
                 QuizAttempt.student_id == student.id
-            ).order_by(QuizAttempt.created_at.desc())
+            ).order_by(QuizAttempt.created_at.desc()).limit(1)
         )
         latest_quiz = quiz_result.scalar_one_or_none()
         
@@ -229,7 +273,7 @@ async def get_students_progress(
         trial_result = await db.execute(
             select(Trial).where(
                 Trial.student_id == student.id
-            ).order_by(Trial.started_at.desc())
+            ).order_by(Trial.started_at.desc()).limit(1)
         )
         latest_trial = trial_result.scalar_one_or_none()
         

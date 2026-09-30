@@ -10,7 +10,7 @@ import { sessionApi } from '@/lib/api'
 const schema = z.object({
   classCode: z.string().min(1, '학급 코드를 입력하세요'),
   grade: z.number().min(1).max(3),
-  classNo: z.number().min(1).max(20),
+  classNo: z.number().min(1).max(9),
   studentNo: z.number().min(1).max(50),
   name: z.string().min(2, '이름은 2자 이상 입력하세요').max(20),
 })
@@ -111,7 +111,7 @@ export function Step1Session() {
               {...register('classNo', { valueAsNumber: true })}
               className="input-court bg-white/10"
             >
-              {Array.from({ length: 15 }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n} className="bg-court-dark">{n}반</option>
               ))}
             </select>

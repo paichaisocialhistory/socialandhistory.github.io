@@ -12,7 +12,12 @@ client = anthropic.AsyncAnthropic(
     timeout=40.0,
 )
 
-MAX_TURNS = 5
+# 재판 길이: 학생은 인정된 발언이 MIN_TURNS번 이상이면 스스로 재판을 마칠 수 있고,
+# 전체 발언이 MAX_TURNS번에 이르면 판사가 재판을 마무리한다 (수업 시간과 비용 보호).
+MIN_TURNS = 3
+MAX_TURNS = 20
+# AI에게 보여 줄 최근 대화 턴 수
+HISTORY_WINDOW = 12
 
 COURT_ROLES = {
     "검사": "검사",
@@ -32,65 +37,111 @@ OPPOSING_ROLES = {
 }
 
 
-class ValidationResult(BaseModel):
+class Evaluation(BaseModel):
     approved: bool
     branch: Literal["A", "B", "C", "D"]
     reason: str
+    good: str
+    improve: str
+    hint: str
+
+
+class CourtReply(BaseModel):
+    speaker: str
+    message: str
+
+
+class CourtReplies(BaseModel):
+    replies: List[CourtReply]
+
+
+class Verdict(BaseModel):
+    verdict: str
+    strengths: str
+    growth: str
 
 
 def _response_text(response: anthropic.types.Message) -> str:
     return "".join(b.text for b in response.content if b.type == "text").strip()
 
 
-async def validate_history_message(
+def format_transcript(student_role: str, history: List[Dict]) -> str:
+    """재판 기록을 AI에게 보여 줄 대본 형태로 만든다."""
+    if not history:
+        return "(아직 발언이 없습니다. 이번이 첫 발언입니다.)"
+    lines = []
+    recent = history[-HISTORY_WINDOW:]
+    if len(history) > len(recent):
+        lines.append(f"(앞선 {len(history) - len(recent)}번의 발언은 생략)")
+    for t in recent:
+        mark = "" if t.get("approved", True) else " (역사 검증에서 인정되지 않은 발언)"
+        lines.append(f"[학생 · {student_role}] {t.get('student_message', '')}{mark}")
+        for r in t.get("responses", []):
+            lines.append(f"[{r.get('speaker')}] {r.get('message')}")
+    return "\n".join(lines)
+
+
+async def evaluate_statement(
     person: str,
     role: str,
     message: str,
+    person_context: str = "",
+    history: List[Dict] = None,
 ) -> Dict[str, Any]:
     """
-    학생의 발언을 역사적 관점에서 검증
-    Returns: {approved, branch, reason}
+    학생 발언을 역사적으로 평가하고, 역사 코치 피드백을 만든다.
+    Returns: {approved, branch, reason, feedback: {good, improve, hint}}
     """
-    system_prompt = """당신은 대한민국 중학교 역사 교사이다.
-학생의 법정 발언을 역사적 사실에 기반하여 평가하라.
+    system_prompt = f"""당신은 대한민국 중학교 역사 교사이자, 역사 모의 법정에서 학생을 돕는 '역사 코치'이다.
+학생의 법정 발언을 역사적 사실에 비추어 평가하고, 학생이 다음 발언을 더 잘하도록 격려하며 구체적으로 안내하라.
+
+재판 대상 인물: {person}
+{person_context}
 
 판정 기준:
-- A: 역사적으로 타당하며 근거 충분 (approved=true)
-- B: 역사성은 맞지만 근거 부족 (approved=true)
-- C: 역할 불일치 또는 역사적 오류 (approved=false)
-- D: 무성의 응답 또는 너무 짧음 (approved=false)
+- A: 역사적으로 타당하며 근거가 충분하다 (approved=true)
+- B: 역사적으로 맞지만 근거가 부족하다 (approved=true)
+- C: 맡은 역할과 맞지 않거나 역사적 사실에 오류가 있다 (approved=false)
+- D: 성의가 없거나 재판과 관계없는 발언이다 (approved=false)
 
-반드시 JSON만 출력하라. 다른 설명 금지."""
+각 항목 작성법 (중학생이 이해할 수 있는 말로, 각각 한두 문장):
+- reason: 판정 이유
+- good: 이 발언에서 잘한 점. 작은 것이라도 구체적으로 찾아 칭찬한다.
+- improve: 보완할 점. 틀린 사실이 있으면 바른 사실을 알려 준다.
+- hint: 다음 발언에서 써 볼 만한 구체적인 근거나 질문 방향. 재판 흐름(상대의 마지막 주장)에 이어지게 제안한다. 정답 문장을 대신 써 주지는 않는다."""
 
-    user_prompt = f"""인물: {person}
-역할: {role}
-학생발언: {message}
+    user_prompt = f"""지금까지의 재판 기록:
+{format_transcript(role, history or [])}
 
-approved, branch(A/B/C/D), reason(판정 이유 한 문장)을 JSON으로 출력하라."""
+학생 역할: {role}
+이번 학생 발언: {message}"""
 
     try:
         response = await client.messages.parse(
             model=settings.CLAUDE_MODEL,
-            max_tokens=300,
+            max_tokens=800,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
-            output_format=ValidationResult,
+            output_format=Evaluation,
         )
         result = response.parsed_output
         if result is None:
-            raise ValueError(f"검증 결과 없음 (stop_reason={response.stop_reason})")
+            raise ValueError(f"평가 결과 없음 (stop_reason={response.stop_reason})")
         return {
             "approved": result.approved,
             "branch": result.branch,
             "reason": result.reason,
+            "feedback": {"good": result.good, "improve": result.improve, "hint": result.hint},
         }
     except Exception as e:
-        # 파싱 실패 시 기본값 반환
-        print(f"AI validation error: {e}")
-        # 메시지 길이로 간단 판정
+        # AI 오류 시에도 재판이 멈추지 않도록 기본값 반환
+        print(f"AI evaluation error: {e}")
         if len(message.strip()) < 10:
-            return {"approved": False, "branch": "D", "reason": "발언이 너무 짧습니다."}
-        return {"approved": True, "branch": "B", "reason": "내용 확인됨"}
+            return {
+                "approved": False, "branch": "D", "reason": "발언이 너무 짧습니다.",
+                "feedback": {"good": "", "improve": "역사적 사실을 들어 조금 더 길게 말해 보세요.", "hint": ""},
+            }
+        return {"approved": True, "branch": "B", "reason": "내용 확인됨", "feedback": None}
 
 
 async def generate_court_responses(
@@ -98,110 +149,119 @@ async def generate_court_responses(
     student_role: str,
     student_message: str,
     branch: str,
-    turn_no: int,
+    person_context: str = "",
     history: List[Dict] = None,
 ) -> List[Dict[str, str]]:
     """
-    재판 역할극 - AI 캐릭터들의 응답 생성
+    재판 역할극 - 지금까지의 재판 흐름을 보고 AI 인물들이 이어서 응답한다.
     """
-    # 학생 역할에 따른 AI 응답 역할 결정
-    responding_roles = OPPOSING_ROLES.get(student_role, ["검사", "판사"])
-    
-    responses = []
-    
-    system_prompt = f"""당신은 역사 모의 법정의 등장인물이다.
+    responding_roles = OPPOSING_ROLES.get(student_role, ["검사", "판사"])[:2]
 
-현재 재판 대상: {person}
+    system_prompt = f"""당신은 역사 모의 법정에서 {', '.join(responding_roles)} 역할을 맡은 AI이다.
+학생은 {student_role} 역할을 맡았다.
+
+재판 대상 인물: {person}
+{person_context}
+
 법정 규칙:
-1. 자신의 역할을 절대 유지할 것
-2. 역사적으로 검증된 사실만 사용할 것
-3. 학생을 직접 평가하거나 칭찬/비판하지 말 것
-4. 최대 2문장으로 응답할 것
-5. 중학교 교과서 수준의 설명을 사용할 것
-6. 법정 어투를 유지할 것 (정중하고 공식적)
-7. 분기 {branch}에 맞는 응답을 할 것:
-   - A분기: 발언이 타당하므로 추가 질문이나 심화 논의
-   - B분기: 근거를 더 요청하거나 보충 설명 요구
-   - C분기: 역할이나 사실 오류를 지적
-   - D분기: 발언의 성의를 요구"""
+1. 각 인물은 자신의 입장을 끝까지 유지한다. 검사는 피고인의 책임을 따지고, 변호인은 피고인을 변호하며, 판사는 중립을 지키며 쟁점을 정리하고 질문한다. 증인은 자신이 보고 들은 당시 상황을 증언한다.
+2. 지금까지의 재판 흐름을 이어 간다. 학생의 이번 발언에 직접 반응하고, 이미 한 말을 되풀이하지 않는다.
+3. 반박하거나 질문을 던져서 학생이 다음 발언을 하고 싶게 만든다. 아직 다루지 않은 쟁점이 있으면 새로 꺼낸다.
+4. 역사적으로 검증된 사실만 사용한다.
+5. 학생을 평가하거나 칭찬·비판하지 않는다 (평가는 역사 코치가 따로 한다).
+6. 인물마다 2~3문장, 중학교 교과서 수준, 정중한 법정 말투를 쓴다.
+7. 이번 발언의 판정({branch})에 맞춘다:
+   - A: 타당한 발언이므로 더 깊은 쟁점으로 나아가거나 날카롭게 반박한다
+   - B: 근거나 사료를 더 요구한다
+   - C: 사실이나 역할의 오류를 법정 안에서 지적한다
+   - D: 재판에 성실히 임할 것을 요구한다"""
 
-    for ai_role in responding_roles[:2]:  # 최대 2개 역할
-        user_prompt = f"""학생역할: {student_role}
-학생발언: "{student_message}"
-분기: {branch}
-당신의 역할: {ai_role}
-턴: {turn_no}/{MAX_TURNS}
+    user_prompt = f"""지금까지의 재판 기록:
+{format_transcript(student_role, history or [])}
 
-{ai_role}로서 한 번만 짧게 응답하라. 캐릭터 대사만 반환하라."""
+[학생 · {student_role}] {student_message}
 
-        try:
-            response = await client.messages.create(
-                model=settings.CLAUDE_MODEL,
-                max_tokens=400,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
-            
-            message = _response_text(response)
-            if not message:
-                raise ValueError(f"빈 응답 (stop_reason={response.stop_reason})")
-            # 불필요한 prefix 제거
-            for prefix in [f"{ai_role}:", f"[{ai_role}]", f"({ai_role})"]:
-                if message.startswith(prefix):
-                    message = message[len(prefix):].strip()
-            
-            responses.append({
-                "speaker": ai_role,
-                "message": message,
-            })
-            
-        except Exception as e:
-            print(f"AI response error for {ai_role}: {e}")
-            responses.append({
-                "speaker": ai_role,
-                "message": f"본 법정은 계속 진행합니다. {ai_role}의 의견을 구합니다.",
-            })
-    
-    return responses
+위 발언에 이어서 {', '.join(responding_roles)} 순서로 한 번씩 발언하라. speaker에는 역할 이름만 쓴다."""
+
+    try:
+        response = await client.messages.parse(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=1000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            output_format=CourtReplies,
+        )
+        result = response.parsed_output
+        if result is None:
+            raise ValueError(f"응답 없음 (stop_reason={response.stop_reason})")
+        replies = [
+            {"speaker": r.speaker.strip(), "message": r.message.strip()}
+            for r in result.replies
+            if r.speaker.strip() in responding_roles and r.message.strip()
+        ]
+        if not replies:
+            raise ValueError("유효한 법정 응답 없음")
+        return replies
+    except Exception as e:
+        print(f"AI court response error: {e}")
+        return [
+            {"speaker": role, "message": f"본 법정은 계속 진행합니다. {role}의 의견을 구합니다."}
+            for role in responding_roles
+        ]
 
 
 async def generate_verdict(
     person: str,
     student_role: str,
-    turns: List[Dict],
-) -> str:
+    history: List[Dict],
+    person_context: str = "",
+    closed_by_judge: bool = False,
+) -> Dict[str, str]:
     """
-    최종 판결문 생성
+    최종 판결문과 학생 활동 총평 생성
+    Returns: {verdict, strengths, growth}
     """
-    turns_summary = "\n".join([
-        f"- 턴{t.get('turn_no', 0)}: {t.get('student_message', '')} (평가: {t.get('branch', '?')})"
-        for t in turns
-    ])
-    
-    prompt = f"""당신은 역사 모의 법정의 판사이다.
-    
-재판 대상: {person}
-학생 역할: {student_role}
-재판 진행 내용:
-{turns_summary}
+    closing = (
+        "발언 횟수가 정해진 한도에 이르러 판사가 재판을 마무리한다."
+        if closed_by_judge else "학생이 최후 변론을 마치고 판결을 요청하였다."
+    )
+    system_prompt = f"""당신은 역사 모의 법정의 판사이자, 재판이 끝난 뒤 학생에게 총평을 주는 역사 코치이다.
 
-위 재판 과정을 바탕으로 역사적 사실에 근거한 최종 판결문을 작성하라.
-판결문은 3-4문장으로 작성하고, 역사적 의미와 현대적 시사점을 포함하라.
-중학교 학생이 이해할 수 있는 수준으로 작성하라."""
+재판 대상 인물: {person}
+{person_context}
+
+작성할 항목:
+- verdict: 판사의 최종 판결문. 재판에서 실제로 나온 주장들을 근거로 4~6문장으로 쓴다. 양측 주장을 공정하게 정리하고, 역사적 의미와 오늘날 우리에게 주는 시사점을 포함한다. 역사적 인물에 대한 평가는 한쪽으로 단정하지 말고 여러 관점을 인정한다.
+- strengths: 학생이 재판에서 잘한 점 (2~3문장, 실제 발언을 예로 든다)
+- growth: 다음에 더 성장할 수 있는 점 (2~3문장, 구체적인 방법 제안)
+
+중학생이 이해할 수 있는 말로 쓴다."""
+
+    user_prompt = f"""{closing}
+
+학생 역할: {student_role}
+전체 재판 기록:
+{format_transcript(student_role, history)}"""
 
     try:
-        response = await client.messages.create(
+        response = await client.messages.parse(
             model=settings.CLAUDE_MODEL,
-            max_tokens=800,
-            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            output_format=Verdict,
         )
-        verdict = _response_text(response)
-        if not verdict:
-            raise ValueError(f"빈 응답 (stop_reason={response.stop_reason})")
-        return verdict
+        result = response.parsed_output
+        if result is None:
+            raise ValueError(f"판결 없음 (stop_reason={response.stop_reason})")
+        return {"verdict": result.verdict, "strengths": result.strengths, "growth": result.growth}
     except Exception as e:
         print(f"Verdict generation error: {e}")
-        return f"본 법정은 {person}에 관한 역사적 재판을 마무리합니다. 학생 여러분은 이 재판을 통해 역사의 다양한 시각을 이해하는 기회가 되었기를 바랍니다."
+        return {
+            "verdict": f"본 법정은 {person}에 관한 역사적 재판을 마무리합니다. 이 재판을 통해 역사를 여러 관점에서 바라보는 기회가 되었기를 바랍니다.",
+            "strengths": "",
+            "growth": "",
+        }
 
 
 async def check_ai_health() -> Dict[str, Any]:

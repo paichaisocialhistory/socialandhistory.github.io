@@ -167,11 +167,8 @@ hist-court/
 
 ## 🔗 Google Sheets 연동
 
-1. Google Sheets 새 문서 생성
-2. **도구 > Apps Script** 열기
-3. `scripts/google_apps_script.js` 코드 붙여넣기
-4. **배포 > 웹 앱으로 배포** (모든 사람 접근 허용)
-5. 배포 URL을 교사 대시보드에 입력
+학생이 느낀점을 제출하면 퀴즈 결과, 판결문, 코치 총평, 재판 기록, 느낀점이 교사의 Google 스프레드시트에 기록됩니다.
+설정 방법은 [GOOGLE_SHEETS.md](GOOGLE_SHEETS.md)를 참고하세요.
 
 ---
 

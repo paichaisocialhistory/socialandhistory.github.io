@@ -49,6 +49,8 @@ export default function TeacherDashboard() {
   const [loginError, setLoginError] = useState('')
   const [sheetUrlInput, setSheetUrlInput] = useState('')
   const [sheetSaving, setSheetSaving] = useState(false)
+  const [sheetSyncing, setSheetSyncing] = useState(false)
+  const [sheetMessage, setSheetMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [newClassForm, setNewClassForm] = useState({ className: '', classCode: '' })
   const [showNewClass, setShowNewClass] = useState(false)
 
@@ -84,6 +86,7 @@ export default function TeacherDashboard() {
   const handleSelectClass = async (cls: ClassInfo) => {
     setSelectedClass(cls)
     setSheetUrlInput(cls.sheetUrl || '')
+    setSheetMessage(null)
     setLoading(true)
     try {
       const res = await teacherApi.getStudents(cls.id)
@@ -96,14 +99,40 @@ export default function TeacherDashboard() {
   const handleSaveSheet = async () => {
     if (!selectedClass) return
     setSheetSaving(true)
+    setSheetMessage(null)
     try {
-      await teacherApi.updateSheetUrl(selectedClass.id, sheetUrlInput)
-      setSelectedClass({ ...selectedClass, sheetUrl: sheetUrlInput })
-      alert('Google Sheets URL이 저장되었습니다.')
-    } catch {
-      alert('저장에 실패했습니다.')
+      const url = sheetUrlInput.trim()
+      await teacherApi.updateSheetUrl(selectedClass.id, url)
+      setSelectedClass({ ...selectedClass, sheetUrl: url })
+      setClasses(classes.map(c => c.id === selectedClass.id ? { ...c, sheetUrl: url } : c))
+      setSheetMessage({
+        ok: true,
+        text: url ? '연결을 확인하고 저장했습니다. 이제 학생이 느낀점을 제출하면 시트에 기록됩니다.' : '시트 연동을 해제했습니다.',
+      })
+    } catch (e: any) {
+      setSheetMessage({ ok: false, text: e.response?.data?.detail || '저장하지 못했습니다. 잠시 후 다시 시도하세요.' })
     } finally {
       setSheetSaving(false)
+    }
+  }
+
+  const handleSyncSheet = async () => {
+    if (!selectedClass) return
+    setSheetSyncing(true)
+    setSheetMessage(null)
+    try {
+      const { data } = await teacherApi.syncSheet(selectedClass.id)
+      if (data.total === 0) {
+        setSheetMessage({ ok: true, text: '아직 느낀점을 제출한 학생이 없습니다.' })
+      } else if (data.failed === 0) {
+        setSheetMessage({ ok: true, text: `${data.sent}명의 결과를 시트로 보냈습니다.` })
+      } else {
+        setSheetMessage({ ok: false, text: `${data.sent}명 성공, ${data.failed}명 실패: ${data.error || ''}` })
+      }
+    } catch (e: any) {
+      setSheetMessage({ ok: false, text: e.response?.data?.detail || '보내지 못했습니다. 잠시 후 다시 시도하세요.' })
+    } finally {
+      setSheetSyncing(false)
     }
   }
 
@@ -272,9 +301,25 @@ export default function TeacherDashboard() {
                       {sheetSaving ? '저장 중...' : '저장'}
                     </button>
                   </div>
-                  <p className="text-white/40 text-xs mt-2">
-                    학생이 느낀점을 제출하면 자동으로 Google Sheets에 저장됩니다
-                  </p>
+                  {sheetMessage && (
+                    <p className={`text-xs mt-2 ${sheetMessage.ok ? 'text-green-400' : 'text-red-400'}`}>
+                      {sheetMessage.ok ? '✅' : '⚠️'} {sheetMessage.text}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+                    <p className="text-white/40 text-xs">
+                      학생이 느낀점을 제출하면 자동으로 Google Sheets에 저장됩니다
+                    </p>
+                    {selectedClass.sheetUrl && (
+                      <button
+                        onClick={handleSyncSheet}
+                        disabled={sheetSyncing}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-court-gold/60 text-court-gold hover:bg-court-gold/10 whitespace-nowrap"
+                      >
+                        {sheetSyncing ? '보내는 중...' : '지금까지 제출된 결과 보내기'}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* 학생 진행 현황 테이블 */}

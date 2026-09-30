@@ -58,6 +58,8 @@ export const trialApi = {
   
   turn: (data: { trialId: string; turn: number; message: string }) =>
     api.post('/trial/turn', data),
+
+  finish: (trialId: string) => api.post('/trial/finish', { trialId }),
   
   history: (trialId: string) => api.get(`/trial/${trialId}/history`),
 }
@@ -94,6 +96,9 @@ export const teacherApi = {
       params: { sheet_url: sheetUrl },
     }),
   
+  syncSheet: (classId: string) =>
+    api.post(`/teacher/classes/${classId}/sheet/sync`, null, { timeout: 180000 }),
+
   getStudents: (classId: string) =>
     api.get(`/teacher/classes/${classId}/students`),
 }

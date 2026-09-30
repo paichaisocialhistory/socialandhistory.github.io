@@ -24,9 +24,24 @@ export interface TrialState {
   person: string
   role: string
   currentTurn: number
+  approvedTurns: number
+  minTurns: number
   maxTurns: number
   isFinished: boolean
   turns: TrialTurn[]
+  verdict?: TrialVerdict
+}
+
+export interface CoachFeedback {
+  good: string
+  improve: string
+  hint: string
+}
+
+export interface TrialVerdict {
+  verdict: string
+  strengths: string
+  growth: string
 }
 
 export interface TrialTurn {
@@ -35,6 +50,7 @@ export interface TrialTurn {
   branch: string
   approved: boolean
   rejectReason?: string
+  feedback?: CoachFeedback | null
   responses: Array<{ speaker: string; message: string }>
 }
 
@@ -66,7 +82,7 @@ interface AppState {
   setTrial: (trial: TrialState) => void
   addTrialTurn: (turn: TrialTurn) => void
   updateTrialTurn: (turnNo: number, updates: Partial<TrialTurn>) => void
-  finishTrial: () => void
+  finishTrial: (verdict: TrialVerdict) => void
   reset: () => void
 }
 
@@ -103,6 +119,7 @@ export const useAppStore = create<AppState>()(
                 ...state.trial,
                 turns: [...state.trial.turns, turn],
                 currentTurn: turn.turnNo,
+                approvedTurns: (state.trial.approvedTurns ?? 0) + (turn.approved ? 1 : 0),
               }
             : state.trial,
         })),
@@ -119,9 +136,9 @@ export const useAppStore = create<AppState>()(
             : state.trial,
         })),
       
-      finishTrial: () =>
+      finishTrial: (verdict) =>
         set((state) => ({
-          trial: state.trial ? { ...state.trial, isFinished: true } : state.trial,
+          trial: state.trial ? { ...state.trial, isFinished: true, verdict } : state.trial,
         })),
       
       reset: () => set(initialState),
