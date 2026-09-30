@@ -15,9 +15,16 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     
-    # Ollama
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen3:14b"
+    # Claude API
+    ANTHROPIC_API_KEY: str = ""
+    CLAUDE_MODEL: str = "claude-haiku-4-5"
+    
+    # 교사 계정 (서버 시작 시 이 계정을 만들거나 비밀번호를 갱신)
+    TEACHER_EMAIL: str = ""
+    TEACHER_PASSWORD: str = ""
+    TEACHER_NAME: str = "선생님"
+    # 누구나 교사 회원가입을 할 수 있게 할지 여부 (인터넷 배포 시 false 권장)
+    ALLOW_TEACHER_REGISTRATION: bool = False
     
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"

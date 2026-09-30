@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import uuid
 from datetime import timedelta
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, decode_access_token
 from app.models.models import Teacher, Class, Student, Activity, QuizAttempt, Trial
@@ -42,6 +43,8 @@ async def register_teacher(
     db: AsyncSession = Depends(get_db),
 ):
     """교사 회원가입"""
+    if not settings.ALLOW_TEACHER_REGISTRATION:
+        raise HTTPException(status_code=403, detail="교사 회원가입이 비활성화되어 있습니다.")
     result = await db.execute(
         select(Teacher).where(Teacher.email == data.email)
     )

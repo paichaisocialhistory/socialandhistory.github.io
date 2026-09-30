@@ -3,7 +3,6 @@
 -- ============================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS vector;
 
 -- 교사 테이블
 CREATE TABLE teachers (
