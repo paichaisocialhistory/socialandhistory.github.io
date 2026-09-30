@@ -58,6 +58,8 @@ export const trialApi = {
   
   turn: (data: { trialId: string; turn: number; message: string }) =>
     api.post('/trial/turn', data),
+
+  finish: (trialId: string) => api.post('/trial/finish', { trialId }),
   
   history: (trialId: string) => api.get(`/trial/${trialId}/history`),
 }

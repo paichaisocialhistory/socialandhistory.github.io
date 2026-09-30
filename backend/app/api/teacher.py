@@ -229,7 +229,7 @@ async def get_students_progress(
         trial_result = await db.execute(
             select(Trial).where(
                 Trial.student_id == student.id
-            ).order_by(Trial.started_at.desc())
+            ).order_by(Trial.started_at.desc()).limit(1)
         )
         latest_trial = trial_result.scalar_one_or_none()
         

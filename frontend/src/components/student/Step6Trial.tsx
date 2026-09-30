@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useAppStore } from '@/store/appStore'
+import { useAppStore, type CoachFeedback, type TrialVerdict } from '@/store/appStore'
 import { trialApi } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -20,25 +20,93 @@ const ROLE_ICONS: Record<string, string> = {
   '피고인': '🎭',
 }
 
+function CoachCard({ feedback }: { feedback: CoachFeedback }) {
+  const items = [
+    { icon: '👍', label: '잘한 점', text: feedback.good },
+    { icon: '🔧', label: '보완할 점', text: feedback.improve },
+    { icon: '💡', label: '다음 발언 힌트', text: feedback.hint },
+  ].filter((item) => item.text)
+  if (items.length === 0) return null
+
+  return (
+    <div className="ml-auto max-w-[85%] rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3">
+      <p className="text-emerald-300 text-xs font-bold mb-2">📘 역사 코치</p>
+      <dl className="space-y-1.5">
+        {items.map((item) => (
+          <div key={item.label} className="text-sm">
+            <dt className="inline text-emerald-200/90 font-bold">{item.icon} {item.label} </dt>
+            <dd className="inline text-white/80">{item.text}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
+function VerdictCard({ verdict, totalTurns, onNext }: {
+  verdict: TrialVerdict
+  totalTurns: number
+  onNext: () => void
+}) {
+  return (
+    <div className="space-y-3 py-2">
+      <div className="court-card border-court-gold p-5">
+        <p className="text-center text-3xl mb-2">🔨</p>
+        <p className="text-center text-court-gold font-bold text-lg mb-3">판결문</p>
+        <p className="text-white/85 text-sm leading-relaxed whitespace-pre-line">{verdict.verdict}</p>
+      </div>
+
+      {(verdict.strengths || verdict.growth) && (
+        <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-5">
+          <p className="text-emerald-300 font-bold mb-3">📘 역사 코치 총평</p>
+          {verdict.strengths && (
+            <div className="mb-3">
+              <p className="text-emerald-200/90 text-sm font-bold mb-1">👍 이번 재판에서 잘한 점</p>
+              <p className="text-white/80 text-sm leading-relaxed">{verdict.strengths}</p>
+            </div>
+          )}
+          {verdict.growth && (
+            <div>
+              <p className="text-emerald-200/90 text-sm font-bold mb-1">🌱 다음에 더 성장할 점</p>
+              <p className="text-white/80 text-sm leading-relaxed">{verdict.growth}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <p className="text-center text-white/50 text-xs">총 {totalTurns}번 발언</p>
+      <button onClick={onNext} className="btn-court w-full">
+        느낀점 작성하기 →
+      </button>
+    </div>
+  )
+}
+
 export function Step6Trial() {
-  const { student, trial, addTrialTurn, finishTrial, setStep } = useAppStore()
+  const { trial, addTrialTurn, finishTrial, setStep } = useAppStore()
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [finishing, setFinishing] = useState(false)
+  const [confirmFinish, setConfirmFinish] = useState(false)
   const [error, setError] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const currentTurn = trial?.currentTurn ?? 0
-  const maxTurns = trial?.maxTurns ?? 5
+  const approvedTurns = trial?.approvedTurns ?? 0
+  const minTurns = trial?.minTurns ?? 3
+  const maxTurns = trial?.maxTurns ?? 20
   const isFinished = trial?.isFinished ?? false
+  const canFinish = approvedTurns >= minTurns
+  const turnsLeft = maxTurns - currentTurn
+  const busy = loading || finishing
 
   // 스크롤 자동 이동
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [trial?.turns])
+  }, [trial?.turns, trial?.verdict, loading, finishing])
 
   const handleSend = async () => {
-    if (!message.trim() || !trial || loading || isFinished) return
+    if (!message.trim() || !trial || busy || isFinished) return
     if (message.trim().length < 10) {
       setError('발언은 10자 이상 입력해주세요.')
       return
@@ -47,6 +115,7 @@ export function Step6Trial() {
     const nextTurn = currentTurn + 1
     setLoading(true)
     setError('')
+    setConfirmFinish(false)
 
     try {
       const res = await trialApi.turn({
@@ -58,16 +127,17 @@ export function Step6Trial() {
       const data = res.data
 
       addTrialTurn({
-        turnNo: nextTurn,
+        turnNo: data.currentTurn ?? nextTurn,
         studentMessage: message.trim(),
         branch: data.branch,
         approved: data.approved,
         rejectReason: data.rejectReason,
+        feedback: data.feedback,
         responses: data.responses || [],
       })
 
-      if (data.isFinished) {
-        finishTrial()
+      if (data.isFinished && data.verdict) {
+        finishTrial(data.verdict)
       }
 
       setMessage('')
@@ -75,6 +145,21 @@ export function Step6Trial() {
       setError(e.response?.data?.detail || '오류가 발생했습니다. 다시 시도하세요.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFinish = async () => {
+    if (!trial || busy || isFinished) return
+    setFinishing(true)
+    setError('')
+    try {
+      const res = await trialApi.finish(trial.trialId)
+      finishTrial(res.data.verdict)
+    } catch (e: any) {
+      setError(e.response?.data?.detail || '판결을 받지 못했습니다. 다시 시도하세요.')
+    } finally {
+      setFinishing(false)
+      setConfirmFinish(false)
     }
   }
 
@@ -94,10 +179,11 @@ export function Step6Trial() {
           </div>
         </div>
         <div className="text-right">
-          <p className="text-white/60 text-xs">진행 턴</p>
+          <p className="text-white/60 text-xs">발언</p>
           <p className="text-court-gold font-bold text-lg">
-            {currentTurn} <span className="text-white/40 text-sm">/ {maxTurns}</span>
+            {currentTurn}<span className="text-white/40 text-sm">번</span>
           </p>
+          <p className="text-white/40 text-xs">인정 {approvedTurns}번</p>
         </div>
       </div>
 
@@ -117,15 +203,15 @@ export function Step6Trial() {
             <div className="flex justify-end">
               <div className="bubble-student">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white/50 text-xs">턴 {turn.turnNo}</span>
+                  <span className="text-white/50 text-xs">{turn.turnNo}번째 발언</span>
                   <span className="text-xs font-bold text-court-gold">
                     {ROLE_ICONS[trial.role]} {trial.role}
                   </span>
                 </div>
                 <p className="text-white text-sm">{turn.studentMessage}</p>
-                
+
                 {/* AI 판정 결과 */}
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <span className={cn(
                     'text-xs px-2 py-0.5 rounded-full border',
                     BRANCH_CONFIG[turn.branch as keyof typeof BRANCH_CONFIG]?.color || 'badge-B'
@@ -138,6 +224,9 @@ export function Step6Trial() {
                 </div>
               </div>
             </div>
+
+            {/* 역사 코치 피드백 */}
+            {turn.feedback && <CoachCard feedback={turn.feedback} />}
 
             {/* AI 응답들 */}
             {turn.responses.map((resp, idx) => (
@@ -155,7 +244,7 @@ export function Step6Trial() {
         ))}
 
         {/* 로딩 */}
-        {loading && (
+        {busy && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-court-royal/60 border border-court-gold/30 flex items-center justify-center text-sm">
               ⚖️
@@ -163,7 +252,9 @@ export function Step6Trial() {
             <div className="bubble-ai">
               <p className="text-court-gold text-xs font-bold mb-1">AI 법정</p>
               <div className="flex gap-1 items-center">
-                <span className="text-white/50 text-sm">검토 중</span>
+                <span className="text-white/50 text-sm">
+                  {finishing ? '판사가 판결문을 작성하고 있습니다' : '검토 중'}
+                </span>
                 <span className="animate-bounce delay-0 text-court-gold">.</span>
                 <span className="animate-bounce delay-100 text-court-gold">.</span>
                 <span className="animate-bounce delay-200 text-court-gold">.</span>
@@ -172,21 +263,13 @@ export function Step6Trial() {
           </div>
         )}
 
-        {/* 재판 종료 */}
-        {isFinished && (
-          <div className="text-center py-4">
-            <div className="inline-block bg-court-gold/20 border border-court-gold rounded-xl px-6 py-4">
-              <p className="text-3xl mb-2">🔨</p>
-              <p className="text-court-gold font-bold text-lg">재판이 종료되었습니다</p>
-              <p className="text-white/60 text-sm mt-1">총 {currentTurn}턴 진행</p>
-              <button
-                onClick={() => setStep(7)}
-                className="btn-court mt-4 w-full"
-              >
-                느낀점 작성하기 →
-              </button>
-            </div>
-          </div>
+        {/* 재판 종료: 판결문과 총평 */}
+        {isFinished && trial.verdict && (
+          <VerdictCard
+            verdict={trial.verdict}
+            totalTurns={currentTurn}
+            onNext={() => setStep(7)}
+          />
         )}
 
         <div ref={chatEndRef} />
@@ -195,29 +278,13 @@ export function Step6Trial() {
       {/* 입력 영역 */}
       {!isFinished && (
         <div className="mt-3 court-card p-3">
-          {/* 남은 턴 표시 */}
-          <div className="flex gap-1 mb-2">
-            {Array.from({ length: maxTurns }, (_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'h-1 flex-1 rounded-full transition-all',
-                  i < currentTurn ? 'bg-court-gold' : 'bg-white/10'
-                )}
-              />
-            ))}
-          </div>
-          <p className="text-white/40 text-xs mb-2 text-right">
-            {maxTurns - currentTurn}턴 남음
-          </p>
-          
           {error && (
             <p className="text-red-400 text-xs mb-2">⚠️ {error}</p>
           )}
-          
+
           <div className="flex gap-2">
             <textarea
-              ref={textareaRef}
+              id="trial-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={(e) => {
@@ -228,21 +295,63 @@ export function Step6Trial() {
               }}
               placeholder={`${trial.role}으로서 역사적 발언을 입력하세요... (Enter로 제출, Shift+Enter 줄바꿈)`}
               rows={2}
-              disabled={loading}
+              disabled={busy}
               className="input-court flex-1 resize-none text-sm"
             />
             <button
               onClick={handleSend}
-              disabled={!message.trim() || loading}
+              disabled={!message.trim() || busy}
               className={cn(
                 'px-4 rounded-lg font-bold transition-all',
-                message.trim() && !loading
+                message.trim() && !busy
                   ? 'bg-court-gold text-court-dark hover:bg-court-gold/80'
                   : 'bg-white/10 text-white/30 cursor-not-allowed'
               )}
             >
               {loading ? '⏳' : '발언'}
             </button>
+          </div>
+
+          {/* 판결 받기 */}
+          <div className="mt-2 pt-2 border-t border-white/10">
+            {!canFinish ? (
+              <p className="text-white/40 text-xs text-center">
+                인정된 발언 {approvedTurns} / {minTurns}번 · {minTurns}번이 되면 원할 때 판결을 받을 수 있어요
+              </p>
+            ) : confirmFinish ? (
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <span className="text-white/70 text-xs mr-auto">
+                  판결을 받으면 더 발언할 수 없어요. 마칠까요?
+                </span>
+                <button
+                  onClick={() => setConfirmFinish(false)}
+                  disabled={busy}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/20 text-white/70 hover:bg-white/5"
+                >
+                  계속 발언하기
+                </button>
+                <button
+                  onClick={handleFinish}
+                  disabled={busy}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-court-gold text-court-dark font-bold hover:bg-court-gold/80"
+                >
+                  판결 받기 🔨
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-white/40 text-xs">
+                  {turnsLeft <= 5 ? `재판 종료까지 ${turnsLeft}번 남음` : '충분히 변론했다면 판결을 받으세요'}
+                </span>
+                <button
+                  onClick={() => setConfirmFinish(true)}
+                  disabled={busy}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-court-gold/60 text-court-gold hover:bg-court-gold/10"
+                >
+                  최후 변론 마치고 판결 받기
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

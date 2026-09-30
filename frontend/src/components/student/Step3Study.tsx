@@ -13,6 +13,13 @@ interface Person {
   content: Record<string, any>
 }
 
+// 재판 쟁점의 역할별 입장 (DB의 영어 키 → 화면에 보일 한글 이름)
+const ROLE_LABELS = [
+  { key: 'prosecutor', label: '검사 측 입장' },
+  { key: 'defender', label: '변호인 측 입장' },
+  { key: 'defendant', label: '피고인의 주장' },
+]
+
 export function Step3Study() {
   const { selectedPerson, setStep } = useAppStore()
   const [person, setPerson] = useState<Person | null>(null)
@@ -101,10 +108,10 @@ export function Step3Study() {
           {/* 역할별 입장 미리보기 */}
           {content.roles && (
             <div className="mt-4 grid grid-cols-1 gap-2">
-              {Object.entries(content.roles as Record<string, string>).map(([role, stance]) => (
-                <div key={role} className="bg-white/5 rounded-lg px-3 py-2">
-                  <span className="text-court-gold text-xs font-bold">[{role}]</span>
-                  <span className="text-white/70 text-sm ml-2">{stance}</span>
+              {ROLE_LABELS.filter(({ key }) => content.roles[key]).map(({ key, label }) => (
+                <div key={key} className="bg-white/5 rounded-lg px-3 py-2">
+                  <span className="text-court-gold text-xs font-bold">[{label}]</span>
+                  <span className="text-white/70 text-sm ml-2">{content.roles[key]}</span>
                 </div>
               ))}
             </div>

@@ -85,6 +85,7 @@ class TrialStartResponse(BaseModel):
     trialId: str
     person: str
     role: str
+    minTurns: int
     maxTurns: int
 
 
@@ -99,13 +100,37 @@ class SpeakerMessage(BaseModel):
     message: str
 
 
+class CoachFeedback(BaseModel):
+    good: str
+    improve: str
+    hint: str
+
+
+class TrialVerdict(BaseModel):
+    verdict: str
+    strengths: str
+    growth: str
+
+
 class TrialTurnResponse(BaseModel):
     approved: bool
     branch: str
     rejectReason: Optional[str] = None
+    feedback: Optional[CoachFeedback] = None
     responses: List[SpeakerMessage]
     currentTurn: int
+    approvedTurns: int
     isFinished: bool
+    verdict: Optional[TrialVerdict] = None
+
+
+class TrialFinishRequest(BaseModel):
+    trialId: str
+
+
+class TrialFinishResponse(BaseModel):
+    verdict: TrialVerdict
+    currentTurn: int
 
 
 # ---- Reflection ----

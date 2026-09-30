@@ -62,13 +62,15 @@ export function Step5RoleSelect() {
         person: selectedPerson,
         role: selected,
       })
-      const { trialId, person, role, maxTurns } = res.data
+      const { trialId, person, role, minTurns, maxTurns } = res.data
       setSelectedRole(selected)
       setTrial({
         trialId,
         person,
         role,
         currentTurn: 0,
+        approvedTurns: 0,
+        minTurns,
         maxTurns,
         isFinished: false,
         turns: [],
@@ -140,8 +142,9 @@ export function Step5RoleSelect() {
           <div className="bg-court-gold/10 rounded-lg p-3 mb-4 text-sm text-white/70">
             <p className="font-bold text-court-gold mb-1">📋 재판 안내</p>
             <ul className="space-y-1 text-xs">
-              <li>• 총 5턴의 발언 기회가 주어집니다</li>
-              <li>• AI가 역사적 사실을 검증합니다</li>
+              <li>• 발언 횟수 제한 없이 재판이 이어집니다 (최대 20번)</li>
+              <li>• 발언할 때마다 역사 코치가 잘한 점과 다음 발언 힌트를 알려 줍니다</li>
+              <li>• 인정된 발언이 3번 이상이면 원할 때 판결을 받을 수 있습니다</li>
               <li>• 검사, 변호인, 판사, 증인이 AI로 응답합니다</li>
               <li>• 역사적으로 타당한 발언을 하세요</li>
             </ul>
