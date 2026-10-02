@@ -18,7 +18,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function Step1Session() {
-  const { setStudent, setStep, currentStep, student } = useAppStore()
+  const { beginSession, setStep, currentStep, student } = useAppStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -38,23 +38,49 @@ export function Step1Session() {
     setError('')
     try {
       const res = await sessionApi.create(data)
-      const { studentId, currentStep: serverStep, stepData } = res.data
+      const { studentId, currentStep: serverStep, stepData = {} } = res.data
+      const person: string | null = stepData.selectedPerson ?? null
+      const role: string | null = stepData.selectedRole ?? null
+      const trialDone = Boolean(stepData.trialCompleted)
 
-      setStudent({
-        studentId,
-        name: data.name,
-        grade: data.grade,
-        classNo: data.classNo,
-        studentNo: data.studentNo,
-        classCode: data.classCode,
-      })
+      // 이 기기에 남아 있던 이전 학생의 정보는 버리고, 서버에 저장된 이 학생의 진행 상태로 복원
+      beginSession(
+        {
+          studentId,
+          name: data.name,
+          grade: data.grade,
+          classNo: data.classNo,
+          studentNo: data.studentNo,
+          classCode: data.classCode,
+        },
+        {
+          selectedPerson: person,
+          selectedRole: trialDone ? role : null,
+          quizResult: stepData.quizScore != null && stepData.quizTotal != null
+            ? { score: stepData.quizScore, total: stepData.quizTotal, passed: Boolean(stepData.quizPassed), attempts: stepData.quizAttempts ?? 1 }
+            : null,
+          trial: trialDone && person && role
+            ? {
+                trialId: stepData.trialId ?? '',
+                person,
+                role,
+                currentTurn: stepData.totalTurns ?? 0,
+                approvedTurns: stepData.approvedTurns ?? 0,
+                minTurns: 3,
+                maxTurns: 20,
+                isFinished: true,
+                turns: [],
+                verdict: stepData.verdict,
+              }
+            : null,
+        }
+      )
 
-      // 서버의 진행 단계로 복원
-      if (serverStep > 1) {
-        setStep(serverStep as 1 | 2 | 3 | 4 | 5 | 6 | 7)
-      } else {
-        setStep(2)
-      }
+      // 진행 단계 복원: 인물이 없으면 인물 선택부터, 재판 중이었으면 역할 선택에서 이어서 시작
+      let step = Math.max(2, serverStep || 1)
+      if (step >= 3 && !person) step = 2
+      if (step === 6 || (step === 7 && !trialDone)) step = 5
+      setStep(step as 2 | 3 | 4 | 5 | 6 | 7)
     } catch (e: any) {
       setError(e.response?.data?.detail || '접속에 실패했습니다. 학급 코드를 확인하세요.')
     } finally {

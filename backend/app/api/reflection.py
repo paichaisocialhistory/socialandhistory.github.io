@@ -55,7 +55,8 @@ async def submit_reflection(
     if activity:
         activity.current_step = 7
         activity.completed = True
-        step_data = activity.step_data or {}
+        # 새 dict로 복사해야 DB가 변경을 알아챈다 (같은 객체를 고치면 저장되지 않음)
+        step_data = dict(activity.step_data or {})
         step_data["reflectionSubmitted"] = True
         activity.step_data = step_data
     
