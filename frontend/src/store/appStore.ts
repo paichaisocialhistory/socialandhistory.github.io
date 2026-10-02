@@ -85,6 +85,10 @@ interface AppState {
   addTrialTurn: (turn: TrialTurn) => void
   updateTrialTurn: (turnNo: number, updates: Partial<TrialTurn>) => void
   finishTrial: (verdict: TrialVerdict) => void
+  // 같은 인물로 역할만 바꿔 다시 하기 (역할 선택으로)
+  retryWithNewRole: () => void
+  // 인물부터 다시 고르기 (인물 선택으로)
+  retryWithNewPerson: () => void
   reset: () => void
 }
 
@@ -152,6 +156,11 @@ export const useAppStore = create<AppState>()(
           trial: state.trial ? { ...state.trial, isFinished: true, verdict } : state.trial,
         })),
       
+      retryWithNewRole: () => set({ selectedRole: null, trial: null, currentStep: 5 }),
+
+      retryWithNewPerson: () =>
+        set({ selectedPerson: null, quizResult: null, selectedRole: null, trial: null, currentStep: 2 }),
+
       reset: () => set(initialState),
     }),
     {

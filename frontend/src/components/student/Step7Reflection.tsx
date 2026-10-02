@@ -15,7 +15,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function Step7Reflection() {
-  const { student, selectedPerson, selectedRole, quizResult, trial } = useAppStore()
+  const { student, selectedPerson, selectedRole, quizResult, trial, retryWithNewRole, retryWithNewPerson } = useAppStore()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [sheetSynced, setSheetSynced] = useState(false)
@@ -101,6 +101,21 @@ export function Step7Reflection() {
             역사 속 인물의 입장에서 생각해보는 소중한 경험이 되었기를 바랍니다.
           </p>
         </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button onClick={retryWithNewRole} className="btn-court text-sm">
+            ↩ {selectedPerson} 재판, 다른 역할로 다시 하기
+          </button>
+          <button
+            onClick={retryWithNewPerson}
+            className="rounded-lg border border-court-gold/60 py-2.5 text-sm text-court-gold hover:bg-court-gold/10"
+          >
+            다른 인물로 다시 하기
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-white/40">
+          다시 하고 느낀점을 또 제출하면, 선생님께는 가장 최근 활동이 전달됩니다.
+        </p>
       </div>
     )
   }
