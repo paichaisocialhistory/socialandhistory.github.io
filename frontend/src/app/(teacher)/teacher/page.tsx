@@ -47,6 +47,7 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(false)
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [loginError, setLoginError] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
   const [sheetUrlInput, setSheetUrlInput] = useState('')
   const [sheetSaving, setSheetSaving] = useState(false)
   const [sheetSyncing, setSheetSyncing] = useState(false)
@@ -72,15 +73,35 @@ export default function TeacherDashboard() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError('')
+    setLoggingIn(true)
+    let res
     try {
-      const res = await teacherApi.login(loginForm.email, loginForm.password)
-      const t = res.data.access_token
-      localStorage.setItem('teacher_token', t)
-      setToken(t)
-      await loadClasses()
-    } catch {
-      setLoginError('이메일 또는 비밀번호가 올바르지 않습니다.')
+      // 아이패드·휴대폰 키보드가 넣는 대문자와 앞뒤 빈칸을 정리
+      res = await teacherApi.login(loginForm.email.trim().toLowerCase(), loginForm.password)
+    } catch (e: any) {
+      if (e.response?.status === 401) {
+        setLoginError('이메일 또는 비밀번호가 올바르지 않습니다.')
+      } else if (e.response?.status === 422) {
+        setLoginError('이메일 형식이 올바르지 않습니다. 빈칸이나 오타가 없는지 확인하세요.')
+      } else if (e.code === 'ECONNABORTED') {
+        setLoginError('서버 응답이 늦습니다. 서버가 깨어나는 중일 수 있으니 1분 뒤 다시 시도하세요.')
+      } else if (!e.response) {
+        setLoginError('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고, 잠시 뒤 다시 시도하세요.')
+      } else {
+        setLoginError(`로그인 중 오류가 났습니다 (${e.response.status}). 잠시 뒤 다시 시도하세요.`)
+      }
+      setLoggingIn(false)
+      return
     }
+    setLoggingIn(false)
+    const t = res.data.access_token
+    try {
+      localStorage.setItem('teacher_token', t)
+    } catch {
+      // 사파리 개인정보 보호 모드 등에서 저장이 막혀도 이번 접속에서는 계속 사용
+    }
+    setToken(t)
+    await loadClasses()
   }
 
   const handleSelectClass = async (cls: ClassInfo) => {
@@ -168,25 +189,35 @@ export default function TeacherDashboard() {
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <input
+              id="teacher-email"
               type="email"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={loginForm.email}
               onChange={e => setLoginForm({ ...loginForm, email: e.target.value })}
               placeholder="이메일"
               className="input-court"
             />
             <input
+              id="teacher-password"
               type="password"
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={loginForm.password}
               onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
               placeholder="비밀번호"
               className="input-court"
             />
             {loginError && <p className="text-red-400 text-sm">{loginError}</p>}
-            <button type="submit" className="btn-court w-full">로그인</button>
+            <button type="submit" disabled={loggingIn} className="btn-court w-full">
+              {loggingIn ? '로그인 중... (서버가 깨어나는 중이면 1분까지 걸려요)' : '로그인'}
+            </button>
           </form>
-          <p className="text-white/40 text-xs text-center mt-4">
-            테스트 계정: teacher@school.kr / password
-          </p>
         </div>
       </div>
     )

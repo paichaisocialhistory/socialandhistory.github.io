@@ -79,10 +79,11 @@ async def login_teacher(
     db: AsyncSession = Depends(get_db),
 ):
     """교사 로그인"""
+    # 이메일은 대소문자를 구분하지 않는다 (휴대기기 키보드가 첫 글자를 대문자로 바꾸는 경우 등)
     result = await db.execute(
-        select(Teacher).where(Teacher.email == data.email)
+        select(Teacher).where(func.lower(Teacher.email) == data.email.strip().lower())
     )
-    teacher = result.scalar_one_or_none()
+    teacher = result.scalars().first()
     
     if not teacher or not verify_password(data.password, teacher.password_hash):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
