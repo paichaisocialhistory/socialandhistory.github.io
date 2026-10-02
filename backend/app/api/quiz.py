@@ -105,8 +105,10 @@ async def submit_quiz(
     )
     activity = result.scalar_one_or_none()
     if activity:
-        step_data = activity.step_data or {}
+        # 새 dict로 복사해야 DB가 변경을 알아챈다 (같은 객체를 고치면 저장되지 않음)
+        step_data = dict(activity.step_data or {})
         step_data["quizScore"] = score
+        step_data["quizTotal"] = total
         step_data["quizPassed"] = passed
         step_data["quizAttempts"] = attempt_count
         activity.step_data = step_data

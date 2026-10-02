@@ -88,7 +88,8 @@ async def select_person(
     
     if activity:
         activity.current_step = max(activity.current_step, 3)  # 학습 단계로 진행
-        step_data = activity.step_data or {}
+        # 새 dict로 복사해야 DB가 변경을 알아챈다 (같은 객체를 고치면 저장되지 않음)
+        step_data = dict(activity.step_data or {})
         step_data["selectedPerson"] = data.person
         step_data["personId"] = str(person.id)
         activity.step_data = step_data

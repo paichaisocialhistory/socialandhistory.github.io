@@ -77,6 +77,8 @@ interface AppState {
   setStep: (step: Step) => void
   setStudent: (student: StudentInfo) => void
   setSelectedPerson: (person: string) => void
+  // 다른 기기 사용자의 정보가 남지 않도록, 학생이 입장할 때 진행 상태를 새로 채운다
+  beginSession: (student: StudentInfo, restore: Partial<Pick<AppState, 'selectedPerson' | 'selectedRole' | 'quizResult' | 'trial'>>) => void
   setQuizResult: (result: QuizResult) => void
   setSelectedRole: (role: string) => void
   setTrial: (trial: TrialState) => void
@@ -104,7 +106,16 @@ export const useAppStore = create<AppState>()(
       
       setStudent: (student) => set({ student }),
       
-      setSelectedPerson: (person) => set({ selectedPerson: person }),
+      // 인물을 바꾸면 그 인물에 딸린 퀴즈·역할·재판 정보는 지운다
+      setSelectedPerson: (person) =>
+        set((state) =>
+          state.selectedPerson === person
+            ? { selectedPerson: person }
+            : { selectedPerson: person, quizResult: null, selectedRole: null, trial: null }
+        ),
+
+      beginSession: (student, restore) =>
+        set({ ...initialState, ...restore, student }),
       
       setQuizResult: (result) => set({ quizResult: result }),
       

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAppStore } from '@/store/appStore'
+import { useAppStore, type TrialTurn } from '@/store/appStore'
 import { trialApi } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -21,14 +21,6 @@ const ROLES = [
     activeColor: 'border-blue-400 bg-blue-500/20',
     desc: '피고인의 행동을 역사적 맥락에서 변호한다',
     tip: '시대적 상황과 불가피성을 강조하세요',
-  },
-  {
-    id: '판사',
-    icon: '⚖️',
-    color: 'border-court-gold/60 bg-court-gold/10',
-    activeColor: 'border-court-gold bg-court-gold/20',
-    desc: '양측 주장을 듣고 역사적 판결을 내린다',
-    tip: '공정한 시각으로 역사를 평가하세요',
   },
   {
     id: '증인',
@@ -63,17 +55,35 @@ export function Step5RoleSelect() {
         role: selected,
       })
       const { trialId, person, role, minTurns, maxTurns } = res.data
-      setSelectedRole(selected)
+
+      // 같은 인물·역할로 진행 중이던 재판이 있으면 그동안의 발언을 불러와 이어서 한다
+      let turns: TrialTurn[] = []
+      try {
+        const history = await trialApi.history(trialId)
+        turns = (history.data.turns || []).map((t: any) => ({
+          turnNo: t.turnNo,
+          studentMessage: t.studentMessage,
+          branch: t.branch,
+          approved: t.approved,
+          rejectReason: t.rejectReason,
+          feedback: t.feedback,
+          responses: t.responses || [],
+        }))
+      } catch {
+        // 기록을 못 불러와도 재판은 이어서 할 수 있다
+      }
+
+      setSelectedRole(role)
       setTrial({
         trialId,
         person,
         role,
-        currentTurn: 0,
-        approvedTurns: 0,
+        currentTurn: turns.length ? turns[turns.length - 1].turnNo : 0,
+        approvedTurns: turns.filter((t) => t.approved).length,
         minTurns,
         maxTurns,
         isFinished: false,
-        turns: [],
+        turns,
       })
       setStep(6)
     } catch (e) {

@@ -23,7 +23,8 @@ from app.services.ai_service import (
 
 router = APIRouter(prefix="/trial", tags=["trial"])
 
-VALID_ROLES = ["검사", "변호인", "판사", "증인", "피고인"]
+# 판사는 AI만 맡는다 (학생 역할에서 제외)
+VALID_ROLES = ["검사", "변호인", "증인", "피고인"]
 
 
 @router.post("/start", response_model=TrialStartResponse)
@@ -42,24 +43,25 @@ async def start_trial(
     if data.role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"역할은 {', '.join(VALID_ROLES)} 중 하나여야 합니다.")
     
-    # 기존 진행 중인 재판 확인
+    # 기존 진행 중인 재판 확인: 같은 인물·역할이면 이어서 하고,
+    # 다른 인물이나 역할을 골랐으면 이전 재판은 중단 처리하고 새로 시작한다
     result = await db.execute(
         select(Trial).where(
             Trial.student_id == student.id,
             Trial.status == "ongoing",
-        )
+        ).order_by(Trial.started_at.desc())
     )
-    existing_trial = result.scalar_one_or_none()
-    
-    if existing_trial:
-        # 기존 재판 반환
-        return TrialStartResponse(
-            trialId=str(existing_trial.id),
-            person=existing_trial.selected_person,
-            role=existing_trial.selected_role,
-            minTurns=MIN_TURNS,
-            maxTurns=MAX_TURNS,
-        )
+    for existing_trial in result.scalars().all():
+        if existing_trial.selected_person == data.person and existing_trial.selected_role == data.role:
+            return TrialStartResponse(
+                trialId=str(existing_trial.id),
+                person=existing_trial.selected_person,
+                role=existing_trial.selected_role,
+                minTurns=MIN_TURNS,
+                maxTurns=MAX_TURNS,
+            )
+        existing_trial.status = "abandoned"
+        existing_trial.ended_at = datetime.now()
     
     # 새 재판 생성
     trial = Trial(
@@ -80,7 +82,8 @@ async def start_trial(
     activity = result.scalar_one_or_none()
     if activity:
         activity.current_step = max(activity.current_step, 6)
-        step_data = activity.step_data or {}
+        # 새 dict로 복사해야 DB가 변경을 알아챈다 (같은 객체를 고치면 저장되지 않음)
+        step_data = dict(activity.step_data or {})
         step_data["selectedRole"] = data.role
         step_data["trialId"] = str(trial.id)
         activity.step_data = step_data
