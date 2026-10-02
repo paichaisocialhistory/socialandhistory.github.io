@@ -81,9 +81,13 @@ async def start_trial(
     )
     activity = result.scalar_one_or_none()
     if activity:
-        activity.current_step = max(activity.current_step, 6)
+        # 새 재판이 시작되면 이전 재판의 결과는 진행 상태에서 내린다 (다른 역할로 다시 하기)
+        activity.current_step = 6
+        activity.completed = False
         # 새 dict로 복사해야 DB가 변경을 알아챈다 (같은 객체를 고치면 저장되지 않음)
         step_data = dict(activity.step_data or {})
+        for key in ("trialCompleted", "totalTurns", "approvedTurns", "verdict"):
+            step_data.pop(key, None)
         step_data["selectedRole"] = data.role
         step_data["trialId"] = str(trial.id)
         activity.step_data = step_data

@@ -43,10 +43,11 @@ function CoachCard({ feedback }: { feedback: CoachFeedback }) {
   )
 }
 
-function VerdictCard({ verdict, totalTurns, onNext }: {
+function VerdictCard({ verdict, totalTurns, onNext, onRetry }: {
   verdict: TrialVerdict
   totalTurns: number
   onNext: () => void
+  onRetry: () => void
 }) {
   return (
     <div className="space-y-3 py-2">
@@ -78,16 +79,23 @@ function VerdictCard({ verdict, totalTurns, onNext }: {
       <button onClick={onNext} className="btn-court w-full">
         느낀점 작성하기 →
       </button>
+      <button
+        onClick={onRetry}
+        className="w-full rounded-lg border border-court-gold/60 py-2.5 text-sm text-court-gold hover:bg-court-gold/10"
+      >
+        ↩ 다른 역할로 다시 재판하기
+      </button>
     </div>
   )
 }
 
 export function Step6Trial() {
-  const { trial, addTrialTurn, finishTrial, setStep } = useAppStore()
+  const { trial, addTrialTurn, finishTrial, setStep, retryWithNewRole } = useAppStore()
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [confirmFinish, setConfirmFinish] = useState(false)
+  const [confirmRetry, setConfirmRetry] = useState(false)
   const [error, setError] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -179,6 +187,15 @@ export function Step6Trial() {
           </div>
         </div>
         <div className="text-right">
+          {!isFinished && (
+            <button
+              onClick={() => (currentTurn === 0 ? retryWithNewRole() : setConfirmRetry(true))}
+              disabled={busy}
+              className="mb-1 text-xs text-white/50 underline-offset-2 hover:text-court-gold hover:underline"
+            >
+              ↩ 역할 다시 고르기
+            </button>
+          )}
           <p className="text-white/60 text-xs">발언</p>
           <p className="text-court-gold font-bold text-lg">
             {currentTurn}<span className="text-white/40 text-sm">번</span>
@@ -186,6 +203,26 @@ export function Step6Trial() {
           <p className="text-white/40 text-xs">인정 {approvedTurns}번</p>
         </div>
       </div>
+
+      {confirmRetry && !isFinished && (
+        <div className="court-card mb-3 flex flex-wrap items-center gap-2 border-court-gold/40 p-3">
+          <span className="mr-auto text-xs text-white/70">
+            역할을 바꾸면 새 재판이 처음부터 시작돼요. 지금 역할로 다시 고르면 이어서 할 수 있어요.
+          </span>
+          <button
+            onClick={() => setConfirmRetry(false)}
+            className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/70 hover:bg-white/5"
+          >
+            계속 재판하기
+          </button>
+          <button
+            onClick={retryWithNewRole}
+            className="rounded-lg bg-court-gold px-3 py-1.5 text-xs font-bold text-court-dark hover:bg-court-gold/80"
+          >
+            역할 다시 고르기
+          </button>
+        </div>
+      )}
 
       {/* 채팅 영역 */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -269,6 +306,7 @@ export function Step6Trial() {
             verdict={trial.verdict}
             totalTurns={currentTurn}
             onNext={() => setStep(7)}
+            onRetry={retryWithNewRole}
           />
         )}
 
