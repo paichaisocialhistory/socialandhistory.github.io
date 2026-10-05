@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.core.database import get_db
 from app.models.models import Student, Class, Activity
 from app.schemas.schemas import SessionCreate, SessionResponse
@@ -24,9 +24,12 @@ async def create_or_restore_session(
     """
     # 학급 코드로 학급 찾기
     result = await db.execute(
-        select(Class).where(Class.class_code == data.classCode, Class.is_active == True)
+        select(Class).where(
+            func.upper(Class.class_code) == data.classCode.strip().upper(),
+            Class.is_active == True,
+        )
     )
-    class_ = result.scalar_one_or_none()
+    class_ = result.scalars().first()
     
     if not class_:
         raise HTTPException(status_code=404, detail="학급 코드를 찾을 수 없습니다.")

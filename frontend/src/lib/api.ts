@@ -12,14 +12,35 @@ export const api = axios.create({
 
 // 교사 토큰 자동 첨부
 api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' 
-    ? localStorage.getItem('teacher_token') 
-    : null
+  let token: string | null = null
+  try {
+    token = typeof window !== 'undefined' ? localStorage.getItem('teacher_token') : null
+  } catch {
+    // 사파리 개인정보 보호 모드 등에서 저장소를 못 읽을 때
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
+
+// 교사 로그인이 만료되면(하루) 저장된 토큰을 지우고 로그인 화면으로 돌려보낸다
+export const TEACHER_LOGOUT_EVENT = 'teacher-logout'
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const url: string = error.config?.url || ''
+    const status = error.response?.status
+    const notLoggedIn = status === 401 || (status === 403 && error.response?.data?.detail === 'Not authenticated')
+    if (typeof window !== 'undefined' && url.startsWith('/teacher/') && url !== '/teacher/login' && notLoggedIn) {
+      try {
+        localStorage.removeItem('teacher_token')
+      } catch {}
+      window.dispatchEvent(new Event(TEACHER_LOGOUT_EVENT))
+    }
+    return Promise.reject(error)
+  }
+)
 
 // ---- Student APIs ----
 

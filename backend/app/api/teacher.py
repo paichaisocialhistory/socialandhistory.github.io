@@ -139,9 +139,14 @@ async def create_class(
     db: AsyncSession = Depends(get_db),
 ):
     """학급 생성"""
-    # 학급 코드 중복 확인
+    class_name = data.className.strip()
+    class_code = data.classCode.strip().upper()
+    if not class_name or not class_code:
+        raise HTTPException(status_code=400, detail="학급 이름과 학급 코드를 모두 입력하세요.")
+
+    # 학급 코드 중복 확인 (대소문자 구분 없이)
     result = await db.execute(
-        select(Class).where(Class.class_code == data.classCode)
+        select(Class).where(func.upper(Class.class_code) == class_code)
     )
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="이미 사용 중인 학급 코드입니다.")
@@ -149,8 +154,8 @@ async def create_class(
     class_ = Class(
         id=uuid.uuid4(),
         teacher_id=teacher.id,
-        class_name=data.className,
-        class_code=data.classCode,
+        class_name=class_name,
+        class_code=class_code,
         sheet_url=data.sheetUrl,
         settings=data.settings or {},
     )

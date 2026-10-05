@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { teacherApi } from '@/lib/api'
+import { teacherApi, TEACHER_LOGOUT_EVENT } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 interface StudentProgress {
@@ -54,13 +54,28 @@ export default function TeacherDashboard() {
   const [sheetMessage, setSheetMessage] = useState<{ ok: boolean; text: string } | null>(null)
   const [newClassForm, setNewClassForm] = useState({ className: '', classCode: '' })
   const [showNewClass, setShowNewClass] = useState(false)
+  const [classError, setClassError] = useState('')
+  const [creatingClass, setCreatingClass] = useState(false)
 
   useEffect(() => {
-    const t = localStorage.getItem('teacher_token')
+    let t: string | null = null
+    try {
+      t = localStorage.getItem('teacher_token')
+    } catch {}
     if (t) {
       setToken(t)
       loadClasses()
     }
+
+    // 로그인이 만료되면 로그인 화면으로
+    const onLogout = () => {
+      setToken(null)
+      setClasses([])
+      setSelectedClass(null)
+      setLoginError('로그인 시간이 지났습니다. 다시 로그인해 주세요. (로그인은 하루 동안 유지돼요)')
+    }
+    window.addEventListener(TEACHER_LOGOUT_EVENT, onLogout)
+    return () => window.removeEventListener(TEACHER_LOGOUT_EVENT, onLogout)
   }, [])
 
   const loadClasses = async () => {
@@ -159,13 +174,32 @@ export default function TeacherDashboard() {
 
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault()
+    const className = newClassForm.className.trim()
+    const classCode = newClassForm.classCode.trim().toUpperCase()
+    if (!className || !classCode) {
+      setClassError('학급 이름과 학급 코드를 모두 입력하세요.')
+      return
+    }
+    setClassError('')
+    setCreatingClass(true)
     try {
-      const res = await teacherApi.createClass(newClassForm)
+      const res = await teacherApi.createClass({ className, classCode })
       setClasses([...classes, res.data])
       setShowNewClass(false)
       setNewClassForm({ className: '', classCode: '' })
-    } catch {
-      alert('학급 생성에 실패했습니다.')
+    } catch (e: any) {
+      const status = e.response?.status
+      if (status === 401 || status === 403) {
+        setClassError('로그인 시간이 지났습니다. 다시 로그인해 주세요.')
+      } else if (e.response?.data?.detail && typeof e.response.data.detail === 'string') {
+        setClassError(e.response.data.detail)
+      } else if (!e.response) {
+        setClassError('서버에 연결하지 못했습니다. 서버가 깨어나는 중일 수 있으니 1분 뒤 다시 시도하세요.')
+      } else {
+        setClassError(`학급을 만들지 못했습니다 (${status}). 잠시 뒤 다시 시도하세요.`)
+      }
+    } finally {
+      setCreatingClass(false)
     }
   }
 
@@ -258,16 +292,22 @@ export default function TeacherDashboard() {
                 <input
                   value={newClassForm.className}
                   onChange={e => setNewClassForm({ ...newClassForm, className: e.target.value })}
-                  placeholder="학급명 (예: 2학년 3반)"
+                  placeholder="학급명 (예: 3학년 8반)"
                   className="input-court text-sm py-2"
                 />
                 <input
                   value={newClassForm.classCode}
                   onChange={e => setNewClassForm({ ...newClassForm, classCode: e.target.value.toUpperCase() })}
-                  placeholder="학급 코드 (예: HIST2-0921)"
+                  placeholder="학급 코드 (예: 0308-4729, 숫자와 - 권장)"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="input-court text-sm py-2 uppercase"
                 />
-                <button type="submit" className="btn-court w-full text-sm py-2">생성</button>
+                {classError && <p className="text-red-400 text-xs">⚠️ {classError}</p>}
+                <button type="submit" disabled={creatingClass} className="btn-court w-full text-sm py-2">
+                  {creatingClass ? '만드는 중...' : '생성'}
+                </button>
               </form>
             )}
 
