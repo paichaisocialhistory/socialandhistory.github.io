@@ -6,6 +6,7 @@
   const MIN_PEOPLE = CONFIG.MIN_PEOPLE || 3;
   const MIN_Q = CONFIG.MIN_QUESTIONS_PER_PERSON || 3;
   const MIN_LEN = CONFIG.MIN_ARTICLE_LENGTH || 200;
+  const AI_URL = (CONFIG.AI_URL || '').trim().replace(/\/+$/, '');
   const STORAGE_KEY = 'war-reporter-v1';
 
   const $ = (sel) => document.querySelector(sel);
@@ -17,9 +18,9 @@
       student: null,
       screen: 'login',
       currentPid: null,
-      chats: {},   // pid -> [{ from: 'me'|'them'|'system', text, qid?, src? }]
-      asked: {},   // pid -> [qid] (대답을 들은 질문, 중복 없이)
-      notes: [],   // [{ pid, qid, text }]
+      chats: {},   // pid -> [{ from: 'me'|'them'|'system', text, mid?, basis?, ai? }]
+      asked: {},   // pid -> [자료 id] (대답에 쓰인 역사 자료 = 취재한 주제, 중복 없이)
+      notes: [],   // [{ pid, mid, text }]
       fact: {},    // pid -> { choice, correct }
       article: { headline: '', body: '', learned: '', think: '' },
       submittedAt: null,
@@ -68,6 +69,7 @@
   }
 
   const askedCount = (pid) => (state.asked[pid] || []).length;
+  const questionCount = (pid) => (state.chats[pid] || []).filter((m) => m.from === 'me').length;
   const isDone = (pid) => askedCount(pid) >= MIN_Q && !!state.fact[pid];
   const donePeople = () => DATA.people.filter((p) => isDone(p.id));
   const canWrite = () => donePeople().length >= MIN_PEOPLE;
@@ -114,6 +116,9 @@
       el('li', null, el('span', { class: 'date' }, t.date), ' ', t.text)));
     $('#tips').replaceChildren(...DATA.questionTips.map((t) =>
       el('div', { class: 'tip' }, el('b', null, t.label), el('span', null, t.example))));
+    $('#answerNote').textContent = AI_URL
+      ? '인물들의 대답은 AI가 실제 역사 자료를 바탕으로 만듭니다. AI도 틀릴 수 있으니, 대답마다 📜 근거를 열어 실제 역사적 사실과 비교해 보세요.'
+      : '인물들은 실제 역사 자료로 준비된 대답만 합니다. 대답마다 📜 근거를 열어 실제 역사적 사실을 확인할 수 있어요.';
   }
   $('#startBtn').addEventListener('click', () => show('map'));
   $('#briefAgainBtn').addEventListener('click', () => show('briefing'));
@@ -121,12 +126,12 @@
   // ---------- 3. 취재 목록 ----------
   function renderMap() {
     $('#goalText').textContent =
-      `최소 ${MIN_PEOPLE}명을 만나 한 사람에게 ${MIN_Q}개 이상 질문하고, 사실 확인까지 마치면 기사를 쓸 수 있어요.`;
+      `최소 ${MIN_PEOPLE}명을 만나 한 사람에게 서로 다른 주제로 ${MIN_Q}가지 이상 취재하고, 사실 확인까지 마치면 기사를 쓸 수 있어요.`;
     $('#peopleList').replaceChildren(...DATA.people.map((p) => {
       const n = askedCount(p.id);
       const badge = isDone(p.id)
-        ? el('span', { class: 'badge done' }, `✔ 취재 완료 · 질문 ${n}개`)
-        : n > 0 ? el('span', { class: 'badge going' }, `취재 중 · 질문 ${n}개`)
+        ? el('span', { class: 'badge done' }, `✔ 취재 완료 · 주제 ${n}가지`)
+        : questionCount(p.id) > 0 ? el('span', { class: 'badge going' }, `취재 중 · 주제 ${n}가지`)
         : el('span', { class: 'badge' }, '아직 만나지 않음');
       return el('button', { class: 'person', type: 'button', onclick: () => openInterview(p.id) },
         el('div', { class: 'top' },
@@ -175,25 +180,38 @@
     if (m.from === 'system') return el('div', { class: 'msg system' }, m.text);
     if (m.from === 'me') return el('div', { class: 'msg me' }, m.text);
     const node = el('div', { class: 'msg them' }, el('div', null, m.text));
-    if (m.qid) {
-      const noted = state.notes.some((n) => n.pid === p.id && n.qid === m.qid);
-      const srcBox = el('div', { class: 'src', hidden: true }, `📜 근거: ${m.src}`);
-      const noteBtn = el('button', { type: 'button', disabled: noted }, noted ? '📌 수첩에 담음' : '📌 수첩에 담기');
-      noteBtn.addEventListener('click', () => {
-        if (!state.notes.some((n) => n.pid === p.id && n.qid === m.qid)) {
-          state.notes.push({ pid: p.id, qid: m.qid, text: m.text });
-          save();
-        }
-        noteBtn.textContent = '📌 수첩에 담음';
-        noteBtn.disabled = true;
-      });
+    if (!m.mid) return node; // 인사말 등
+    const tools = el('div', { class: 'tools' });
+    const noted = state.notes.some((n) => n.mid === m.mid);
+    const noteBtn = el('button', { type: 'button', disabled: noted }, noted ? '📌 수첩에 담음' : '📌 수첩에 담기');
+    noteBtn.addEventListener('click', () => {
+      if (!state.notes.some((n) => n.mid === m.mid)) {
+        state.notes.push({ pid: p.id, mid: m.mid, text: m.text });
+        save();
+      }
+      noteBtn.textContent = '📌 수첩에 담음';
+      noteBtn.disabled = true;
+    });
+    tools.append(noteBtn);
+
+    // 대답에 쓰인 역사 자료 (AI가 고른 번호를 data.js의 실제 자료로 바꿔서 보여 줌)
+    const srcs = (m.basis || []).map((id) => p.questions.find((q) => q.id === id)).filter(Boolean);
+    if (srcs.length) {
+      const srcBox = el('div', { class: 'src', hidden: true },
+        ...srcs.map((q) => el('div', null, `📜 ${q.src}`)));
       const srcBtn = el('button', { type: 'button' }, '📜 근거 보기');
       srcBtn.addEventListener('click', () => {
         srcBox.hidden = !srcBox.hidden;
         srcBtn.textContent = srcBox.hidden ? '📜 근거 보기' : '📜 근거 닫기';
       });
-      node.append(el('div', { class: 'tools' }, noteBtn, srcBtn), srcBox);
+      tools.append(srcBtn);
+      node.append(tools, srcBox);
+    } else {
+      node.append(tools);
     }
+    if (m.ai) node.append(el('div', { class: 'ai-tag' }, srcs.length
+      ? '🤖 AI가 역사 자료를 바탕으로 만든 대답이에요. 근거와 비교해 보세요.'
+      : '🤖 AI 대답 · 자료에 없는 내용이라 근거가 없어요.'));
     return node;
   }
 
@@ -212,8 +230,8 @@
     const n = askedCount(p.id);
     const f = state.fact[p.id];
     $('#ivCount').textContent = f
-      ? `질문 ${n}개 · 사실 확인 ${f.correct ? '정답 ✔' : '완료'}`
-      : n >= MIN_Q ? `질문 ${n}개 · 이제 사실 확인을 할 수 있어요` : `질문 ${n} / ${MIN_Q}개`;
+      ? `취재한 주제 ${n}가지 · 사실 확인 ${f.correct ? '정답 ✔' : '완료'}`
+      : n >= MIN_Q ? `취재한 주제 ${n}가지 · 이제 사실 확인을 할 수 있어요` : `취재한 주제 ${n} / ${MIN_Q}가지`;
     const btn = $('#factBtn');
     btn.disabled = n < MIN_Q;
     btn.textContent = f ? '✅ 사실 확인 다시 보기' : '✅ 사실 확인하고 취재 마치기';
@@ -246,8 +264,45 @@
     return best;
   }
 
+  // 준비된 대답 (AI를 쓰지 않거나 AI가 대답하지 못했을 때)
+  function preparedReply(p, text) {
+    const match = findAnswer(p, text);
+    if (match) return { text: match.a, basis: [match.id] };
+    const asked = new Set(state.asked[p.id] || []);
+    const hints = p.questions.filter((q) => !asked.has(q.id)).slice(0, 2).map((q) => `"${q.q}"`);
+    return { text: p.fallback + (hints.length ? ` 차라리 ${hints.join(' 또는 ')} 같은 걸 물어봐 주세요.` : ''), basis: [] };
+  }
+
+  // AI 대답: 인물 정보와 data.js의 역사 자료, 최근 대화를 함께 보낸다
+  async function aiReply(p, text, history) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    try {
+      const s = state.student;
+      const res = await fetch(AI_URL + '/api/reporter/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          studentId: `${s.grade}-${s.classNo}-${s.studentNo}-${s.name}`,
+          person: { name: p.name, role: p.role, when: p.when, where: p.where, intro: p.intro },
+          sources: p.questions.map((q) => ({ id: q.id, topic: q.q, testimony: q.a, fact: q.src })),
+          history,
+          question: text,
+        }),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.answer ? { text: json.answer, basis: json.basis || [], ai: true } : null;
+    } catch (e) {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   let busy = false;
-  $('#askForm').addEventListener('submit', (e) => {
+  $('#askForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (busy) return;
     const p = peopleById[state.currentPid];
@@ -258,6 +313,9 @@
     input.value = '';
 
     const chat = state.chats[p.id];
+    // AI에게 보여 줄 최근 대화 (이번 질문 전까지)
+    const history = chat.filter((m) => m.from !== 'system').slice(-10)
+      .map((m) => ({ speaker: m.from === 'me' ? 'reporter' : 'interviewee', text: m.text.slice(0, 800) }));
     const mine = { from: 'me', text };
     chat.push(mine);
     $('#chat').append(messageNode(p, mine));
@@ -266,29 +324,36 @@
     $('#chat').append(typing);
     scrollChat();
     busy = true;
+    $('#askForm button').disabled = true;
 
-    const match = findAnswer(p, text);
-    let reply;
-    if (match) {
-      reply = { from: 'them', text: match.a, qid: match.id, src: match.src, q: text };
-      const asked = state.asked[p.id] || (state.asked[p.id] = []);
-      if (!asked.includes(match.id)) asked.push(match.id);
-    } else {
-      const asked = new Set(state.asked[p.id] || []);
-      const hints = p.questions.filter((q) => !asked.has(q.id)).slice(0, 2).map((q) => `"${q.q}"`);
-      reply = { from: 'them', text: p.fallback + (hints.length ? ` 차라리 ${hints.join(' 또는 ')} 같은 걸 물어봐 주세요.` : '') };
+    const started = Date.now();
+    let answer = AI_URL ? await aiReply(p, text, history) : null;
+    if (AI_URL && !answer && !state.aiDownNoticed) {
+      state.aiDownNoticed = true;
+      const note = { from: 'system', text: '(AI 연결이 원활하지 않아 잠시 준비된 대답으로 이어 갑니다.)' };
+      chat.push(note);
+      typing.before(messageNode(p, note));
     }
+    if (answer) state.aiDownNoticed = false;
+    if (!answer) answer = preparedReply(p, text);
+
+    const reply = { from: 'them', mid: `${Date.now()}-${chat.length}`, text: answer.text, basis: answer.basis, ai: !!answer.ai };
+    const asked = state.asked[p.id] || (state.asked[p.id] = []);
+    reply.basis.forEach((id) => { if (!asked.includes(id)) asked.push(id); });
     chat.push(reply);
     save();
 
+    // 준비된 대답은 바로 나오므로 대답하는 척 잠깐 기다림
+    const wait = Math.max(0, 500 + Math.min(1200, reply.text.length * 8) - (Date.now() - started));
     setTimeout(() => {
       typing.replaceWith(messageNode(p, reply));
       renderSuggestions(p);
       updateInterviewFooter(p);
       scrollChat();
       busy = false;
+      $('#askForm button').disabled = false;
       input.focus();
-    }, 500 + Math.min(1200, reply.text.length * 8));
+    }, answer.ai ? 0 : wait);
   });
 
   $('#backToMapBtn').addEventListener('click', () => show('map'));
@@ -453,10 +518,10 @@
 
   function payload() {
     const s = state.student;
-    const met = DATA.people.filter((p) => askedCount(p.id) > 0);
+    const met = DATA.people.filter((p) => questionCount(p.id) > 0);
     const factDone = Object.keys(state.fact).length;
     const factRight = Object.values(state.fact).filter((f) => f.correct).length;
-    const questionCount = Object.values(state.chats).flat().filter((m) => m.from === 'me').length;
+    const totalQuestions = DATA.people.reduce((sum, p) => sum + questionCount(p.id), 0);
     return {
       studentId: `${s.grade}-${s.classNo}-${s.studentNo}-${s.name}`,
       grade: s.grade,
@@ -464,8 +529,8 @@
       studentNo: s.studentNo,
       name: s.name,
       war: DATA.title,
-      people: met.map((p) => `${p.name}(${askedCount(p.id)})`).join(', '),
-      questionCount,
+      people: met.map((p) => `${p.name}(${questionCount(p.id)})`).join(', '),
+      questionCount: totalQuestions,
       factCheck: `${factRight}/${factDone}`,
       headline: state.article.headline.trim(),
       body: state.article.body.trim(),
@@ -546,6 +611,8 @@
   }
 
   // ---------- 시작 ----------
+  // 무료 서버는 쉬고 있으면 깨어나는 데 시간이 걸리므로, 사이트를 열 때 미리 깨워 둔다
+  if (AI_URL) fetch(AI_URL + '/', { mode: 'no-cors' }).catch(() => {});
   if (!state.student) show('login');
   else if (state.screen === 'interview' && !peopleById[state.currentPid]) show('map');
   else if (state.screen === 'done' && !state.lastResult) show('article');

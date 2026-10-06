@@ -157,6 +157,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .msg .tools button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: var(--olive); font-weight: 700; }
 .msg .tools button:disabled { color: var(--ink-2); cursor: default; }
 .msg .src { margin-top: 8px; padding: 8px 10px; font-size: 13px; background: #fbf3dc; border-left: 3px solid #d4b45c; border-radius: 4px; }
+.msg .src div + div { margin-top: 6px; }
+.ai-tag { margin-top: 6px; font-size: 12px; color: var(--ink-2); }
 .typing { color: var(--ink-2); font-style: italic; }
 
 .suggest { padding: 8px 16px 0; border-top: 1px solid var(--line); }

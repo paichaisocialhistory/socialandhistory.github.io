@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # 누구나 교사 회원가입을 할 수 있게 할지 여부 (인터넷 배포 시 false 권장)
     ALLOW_TEACHER_REGISTRATION: bool = False
     
+    # 종군기자 인터뷰 AI 사용량 제한 (API 요금 보호)
+    REPORTER_DAILY_LIMIT: int = 2000          # 하루 전체 질문 수
+    REPORTER_STUDENT_HOURLY_LIMIT: int = 60   # 학생 한 명이 한 시간에 할 수 있는 질문 수
+    
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
     
