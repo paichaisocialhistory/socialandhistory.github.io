@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>전쟁 속 종군기자</title>
+  <meta name="description" content="6·25 전쟁 속 사람들을 인터뷰하고 기사를 쓰는 중학교 역사 시뮬레이션">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">📰 <span>전쟁 속 종군기자</span></div>
+    <div id="who" class="who" hidden>
+      <span id="whoText"></span>
+      <button id="logoutBtn" class="btn-link" type="button">로그아웃</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- 1. 로그인 -->
+    <section id="screen-login" class="screen" hidden>
+      <div class="paper narrow">
+        <p class="kicker">기자증 발급</p>
+        <h1 class="headline">종군기자로 등록하기</h1>
+        <p class="lead">학년, 반, 번호, 이름을 정확하게 입력하세요. 제출한 기사는 선생님께 전달됩니다.</p>
+        <form id="loginForm" class="form" autocomplete="off">
+          <div class="row3">
+            <label>학년
+              <select name="grade" required>
+                <option value="1">1학년</option><option value="2">2학년</option><option value="3" selected>3학년</option>
+              </select>
+            </label>
+            <label>반
+              <input name="classNo" type="number" min="1" max="20" inputmode="numeric" required>
+            </label>
+            <label>번호
+              <input name="studentNo" type="number" min="1" max="50" inputmode="numeric" required>
+            </label>
+          </div>
+          <label>이름
+            <input name="name" type="text" maxlength="20" required placeholder="이름">
+          </label>
+          <p id="loginError" class="error" hidden></p>
+          <button class="btn primary" type="submit">기자증 받기</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 2. 브리핑 -->
+    <section id="screen-briefing" class="screen" hidden>
+      <div class="paper">
+        <p class="kicker">편집국 브리핑 · <span id="warPeriod"></span></p>
+        <h1 class="headline" id="briefTitle"></h1>
+        <p class="lead" id="missionText"></p>
+
+        <h2 class="section-title">취재 전에 알아 둘 흐름</h2>
+        <ol id="timeline" class="timeline"></ol>
+
+        <h2 class="section-title">좋은 질문을 던지는 법</h2>
+        <div id="tips" class="tips"></div>
+
+        <div class="notice">
+          <strong>알아 두기</strong> 인터뷰할 사람들은 실제 기록과 증언을 바탕으로 만든 <b>가상 인물</b>입니다.
+          대답마다 <b>📜 근거</b>를 눌러 실제 역사적 사실을 확인할 수 있어요.
+          인물들은 자신이 겪은 일만 대답합니다.
+        </div>
+
+        <div class="actions">
+          <button id="startBtn" class="btn primary" type="button">취재 시작하기 →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 취재 지도 -->
+    <section id="screen-map" class="screen" hidden>
+      <div class="paper">
+        <p class="kicker">취재 목록</p>
+        <h1 class="headline">누구를 만나러 갈까요?</h1>
+        <p class="lead" id="goalText"></p>
+        <div id="peopleList" class="people"></div>
+        <div class="progress-box">
+          <div id="progressText"></div>
+          <div class="actions">
+            <button id="notebookBtn" class="btn" type="button">📒 취재 수첩</button>
+            <button id="briefAgainBtn" class="btn" type="button">브리핑 다시 보기</button>
+            <button id="toArticleBtn" class="btn primary" type="button">기사 쓰러 가기 →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 인터뷰 -->
+    <section id="screen-interview" class="screen" hidden>
+      <div class="interview">
+        <div class="iv-head">
+          <button id="backToMapBtn" class="btn-link" type="button">← 취재 목록</button>
+          <div class="iv-person">
+            <div class="avatar" id="ivEmoji"></div>
+            <div>
+              <div class="iv-name" id="ivName"></div>
+              <div class="iv-meta" id="ivMeta"></div>
+            </div>
+          </div>
+        </div>
+        <div id="chat" class="chat" aria-live="polite"></div>
+        <div class="suggest">
+          <div class="suggest-label">💡 질문 아이디어 (눌러서 고쳐 쓸 수 있어요)</div>
+          <div id="suggestions" class="chips"></div>
+        </div>
+        <form id="askForm" class="ask">
+          <input id="askInput" type="text" maxlength="150" placeholder="질문을 직접 써 보세요" autocomplete="off">
+          <button class="btn primary" type="submit">질문하기</button>
+        </form>
+        <div class="iv-foot">
+          <span id="ivCount"></span>
+          <button id="factBtn" class="btn" type="button">✅ 사실 확인하고 취재 마치기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 기사 쓰기 -->
+    <section id="screen-article" class="screen" hidden>
+      <div class="paper">
+        <p class="kicker">기사 작성</p>
+        <h1 class="headline">전쟁은 평범한 사람들의 삶을 어떻게 바꾸었나</h1>
+        <p class="lead">취재한 내용을 바탕으로 기사를 써 보세요. 인터뷰한 사람의 말을 따옴표로 넣으면 더 생생한 기사가 됩니다.</p>
+
+        <form id="articleForm" class="form">
+          <label>기사 제목
+            <input name="headline" type="text" maxlength="60" required placeholder="예) 짐 대신 사람을 태운 배, 흥남 부두의 크리스마스">
+          </label>
+
+          <div class="quotes-box">
+            <div class="quotes-label">📒 취재 수첩에서 인용하기 <small>(누르면 본문 커서 위치에 들어가요)</small></div>
+            <div id="quoteList" class="quote-list"></div>
+          </div>
+
+          <label>기사 본문 <span class="count" id="bodyCount"></span>
+            <textarea name="body" rows="12" required placeholder="언제, 어디서, 누구를 만났는지부터 써 보세요."></textarea>
+          </label>
+
+          <div id="reflectionFields"></div>
+
+          <p id="articleError" class="error" hidden></p>
+          <div class="actions">
+            <button id="articleBackBtn" class="btn" type="button">← 취재 더 하기</button>
+            <button id="downloadBtn" class="btn" type="button">💾 파일로 저장</button>
+            <button id="submitBtn" class="btn primary" type="submit">선생님께 제출하기</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 6. 제출 완료 -->
+    <section id="screen-done" class="screen" hidden>
+      <div class="paper">
+        <p class="kicker" id="doneKicker">호외</p>
+        <div id="doneStatus" class="status"></div>
+        <article id="printed" class="printed"></article>
+        <div class="actions">
+          <button id="editAgainBtn" class="btn" type="button">기사 고치기</button>
+          <button id="downloadBtn2" class="btn" type="button">💾 파일로 저장</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 사실 확인 / 취재 수첩 대화상자 -->
+  <dialog id="factDialog" class="dialog">
+    <form method="dialog" id="factForm">
+      <h3>✅ 사실 확인</h3>
+      <p id="factQ"></p>
+      <div id="factOptions" class="options"></div>
+      <p id="factResult" class="fact-result" hidden></p>
+      <div class="actions">
+        <button class="btn" value="cancel" type="submit">닫기</button>
+        <button id="factSubmit" class="btn primary" type="button">확인</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="notebookDialog" class="dialog">
+    <form method="dialog">
+      <h3>📒 취재 수첩</h3>
+      <p class="muted">인터뷰 중 대답 아래의 <b>📌 수첩에 담기</b>를 누르면 여기에 모입니다.</p>
+      <div id="notebookList" class="quote-list"></div>
+      <div class="actions"><button class="btn" type="submit">닫기</button></div>
+    </form>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
