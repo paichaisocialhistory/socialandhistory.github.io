@@ -5,12 +5,16 @@
   const DATA = window.WAR_DATA;
   const MIN_PEOPLE = CONFIG.MIN_PEOPLE || 3;
   const MIN_Q = CONFIG.MIN_QUESTIONS_PER_PERSON || 3;
+  const MIN_COMMON = CONFIG.MIN_COMMON_TOPICS || 5;
   const MIN_LEN = CONFIG.MIN_ARTICLE_LENGTH || 200;
   const AI_URL = (CONFIG.AI_URL || '').trim().replace(/\/+$/, '');
   const STORAGE_KEY = 'war-reporter-v1';
 
   const $ = (sel) => document.querySelector(sel);
   const peopleById = Object.fromEntries(DATA.people.map((p) => [p.id, p]));
+  // 공통 인터뷰(모든 학생이 먼저 하는 인터뷰)와 현장 취재 인물
+  const COMMON = DATA.people.find((p) => p.common) || null;
+  const FIELD = DATA.people.filter((p) => !p.common);
 
   // ---------- 상태 (이 기기의 브라우저에 자동 저장) ----------
   function freshState() {
@@ -70,9 +74,11 @@
 
   const askedCount = (pid) => (state.asked[pid] || []).length;
   const questionCount = (pid) => (state.chats[pid] || []).filter((m) => m.from === 'me').length;
-  const isDone = (pid) => askedCount(pid) >= MIN_Q && !!state.fact[pid];
-  const donePeople = () => DATA.people.filter((p) => isDone(p.id));
-  const canWrite = () => donePeople().length >= MIN_PEOPLE;
+  const needed = (pid) => (peopleById[pid] && peopleById[pid].common ? MIN_COMMON : MIN_Q);
+  const isDone = (pid) => askedCount(pid) >= needed(pid) && !!state.fact[pid];
+  const commonDone = () => !COMMON || isDone(COMMON.id);
+  const donePeople = () => FIELD.filter((p) => isDone(p.id));
+  const canWrite = () => commonDone() && donePeople().length >= MIN_PEOPLE;
 
   // ---------- 1. 로그인 ----------
   $('#loginForm').addEventListener('submit', (e) => {
@@ -116,34 +122,50 @@
       el('li', null, el('span', { class: 'date' }, t.date), ' ', t.text)));
     $('#tips').replaceChildren(...DATA.questionTips.map((t) =>
       el('div', { class: 'tip' }, el('b', null, t.label), el('span', null, t.example))));
+    $('#startBtn').textContent = COMMON && !commonDone() ? '공통 인터뷰 시작하기 →' : '취재 목록으로 →';
     $('#answerNote').textContent = AI_URL
       ? '인물들의 대답은 AI가 실제 역사 자료를 바탕으로 만듭니다. AI도 틀릴 수 있으니, 대답마다 📜 근거를 열어 실제 역사적 사실과 비교해 보세요.'
       : '인물들은 실제 역사 자료로 준비된 대답만 합니다. 대답마다 📜 근거를 열어 실제 역사적 사실을 확인할 수 있어요.';
   }
-  $('#startBtn').addEventListener('click', () => show('map'));
+  $('#startBtn').addEventListener('click', () => {
+    if (COMMON && !commonDone()) openInterview(COMMON.id);
+    else show('map');
+  });
   $('#briefAgainBtn').addEventListener('click', () => show('briefing'));
 
   // ---------- 3. 취재 목록 ----------
+  function personCard(p, locked) {
+    const n = askedCount(p.id);
+    const badge = locked
+      ? el('span', { class: 'badge' }, '🔒 공통 인터뷰를 마치면 만날 수 있어요')
+      : isDone(p.id) ? el('span', { class: 'badge done' }, `✔ 취재 완료 · 주제 ${n}가지`)
+      : questionCount(p.id) > 0 ? el('span', { class: 'badge going' }, `취재 중 · 주제 ${n} / ${needed(p.id)}가지`)
+      : el('span', { class: 'badge' }, '아직 만나지 않음');
+    return el('button', { class: 'person' + (p.common ? ' common' : ''), type: 'button', disabled: locked, onclick: () => openInterview(p.id) },
+      el('div', { class: 'top' },
+        el('span', { class: 'emoji' }, p.emoji),
+        el('div', null, el('div', { class: 'name' }, p.name), el('div', { class: 'role' }, p.role))),
+      el('div', { class: 'place' }, `📍 ${p.when} · ${p.where}`),
+      el('div', { class: 'desc' }, p.intro),
+      badge);
+  }
+
   function renderMap() {
-    $('#goalText').textContent =
-      `최소 ${MIN_PEOPLE}명을 만나 한 사람에게 서로 다른 주제로 ${MIN_Q}가지 이상 취재하고, 사실 확인까지 마치면 기사를 쓸 수 있어요.`;
-    $('#peopleList').replaceChildren(...DATA.people.map((p) => {
-      const n = askedCount(p.id);
-      const badge = isDone(p.id)
-        ? el('span', { class: 'badge done' }, `✔ 취재 완료 · 주제 ${n}가지`)
-        : questionCount(p.id) > 0 ? el('span', { class: 'badge going' }, `취재 중 · 주제 ${n}가지`)
-        : el('span', { class: 'badge' }, '아직 만나지 않음');
-      return el('button', { class: 'person', type: 'button', onclick: () => openInterview(p.id) },
-        el('div', { class: 'top' },
-          el('span', { class: 'emoji' }, p.emoji),
-          el('div', null, el('div', { class: 'name' }, p.name), el('div', { class: 'role' }, p.role))),
-        el('div', { class: 'place' }, `📍 ${p.when} · ${p.where}`),
-        el('div', { class: 'desc' }, p.intro),
-        badge);
-    }));
+    const locked = !commonDone();
+    $('#goalText').textContent = (COMMON ? `먼저 공통 인터뷰에서 서로 다른 주제 ${MIN_COMMON}가지 이상을 묻고 사실 확인을 마치세요. 그다음 ` : '') +
+      `현장 사람 최소 ${MIN_PEOPLE}명에게서 각각 서로 다른 주제로 ${MIN_Q}가지 이상 취재하고 사실 확인까지 마치면 기사를 쓸 수 있어요.`;
+    const parts = [];
+    if (COMMON) {
+      parts.push(el('h2', { class: 'section-title list-title' }, '① 공통 인터뷰 · 전쟁의 큰 흐름'));
+      parts.push(el('div', { class: 'people' }, personCard(COMMON, false)));
+      parts.push(el('h2', { class: 'section-title list-title' }, '② 현장 취재 · 전쟁 속 사람들'));
+    }
+    parts.push(el('div', { class: 'people' }, ...FIELD.map((p) => personCard(p, locked))));
+    $('#peopleList').replaceChildren(...parts);
     const done = donePeople().length;
     $('#progressText').textContent =
-      `취재 완료 ${done} / ${MIN_PEOPLE}명 · 수첩에 담은 말 ${state.notes.length}개` +
+      (COMMON ? `공통 인터뷰 ${commonDone() ? '완료 ✔' : '아직'} · ` : '') +
+      `현장 취재 완료 ${done} / ${MIN_PEOPLE}명 · 수첩에 담은 말 ${state.notes.length}개` +
       (canWrite() ? ' — 기사를 쓸 준비가 되었어요!' : '');
     $('#toArticleBtn').disabled = !canWrite();
   }
@@ -152,6 +174,7 @@
 
   // ---------- 4. 인터뷰 ----------
   function openInterview(pid) {
+    if (!peopleById[pid].common && !commonDone()) return;
     state.currentPid = pid;
     if (!state.chats[pid]) {
       const p = peopleById[pid];
@@ -228,12 +251,13 @@
 
   function updateInterviewFooter(p) {
     const n = askedCount(p.id);
+    const need = needed(p.id);
     const f = state.fact[p.id];
     $('#ivCount').textContent = f
       ? `취재한 주제 ${n}가지 · 사실 확인 ${f.correct ? '정답 ✔' : '완료'}`
-      : n >= MIN_Q ? `취재한 주제 ${n}가지 · 이제 사실 확인을 할 수 있어요` : `취재한 주제 ${n} / ${MIN_Q}가지`;
+      : n >= need ? `취재한 주제 ${n}가지 · 이제 사실 확인을 할 수 있어요` : `취재한 주제 ${n} / ${need}가지`;
     const btn = $('#factBtn');
-    btn.disabled = n < MIN_Q;
+    btn.disabled = n < need;
     btn.textContent = f ? '✅ 사실 확인 다시 보기' : '✅ 사실 확인하고 취재 마치기';
   }
 
@@ -393,7 +417,9 @@
     document.querySelectorAll('#factOptions input').forEach((i) => { i.disabled = true; });
     $('#factSubmit').hidden = true;
     showFactResult(p.factCheck, correct);
-    state.chats[p.id].push({ from: 'system', text: `${p.name} 님 취재를 마쳤습니다. 취재 목록에서 다른 사람을 만나 보세요.` });
+    state.chats[p.id].push({ from: 'system', text: p.common
+      ? '공통 인터뷰를 마쳤습니다. 이제 [← 취재 목록]으로 가서 전쟁 현장의 사람들을 만나 보세요.'
+      : `${p.name} 님 취재를 마쳤습니다. 취재 목록에서 다른 사람을 만나 보세요.` });
     save();
     renderInterview();
   });

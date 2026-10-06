@@ -125,6 +125,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   transition: transform .12s ease;
 }
 .person:hover { transform: translateY(-2px); border-color: var(--ink-2); }
+.person:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.person.common { border: 2px solid var(--accent); }
+.list-title { font-size: 17px; margin: 20px 0 10px; }
+.list-title:first-child { margin-top: 0; }
 .person .top { display: flex; align-items: center; gap: 10px; }
 .person .emoji { font-size: 34px; line-height: 1; }
 .person .name { font-family: var(--serif); font-weight: 900; font-size: 19px; }

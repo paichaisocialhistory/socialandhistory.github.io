@@ -11,7 +11,8 @@ window.REPORTER_CONFIG = {
   AI_URL: '',
 
   // 기사 쓰기로 넘어가기 위한 조건
-  MIN_PEOPLE: 3,              // 최소 몇 명을 인터뷰해야 하는지
+  MIN_COMMON_TOPICS: 5,        // 공통 인터뷰(연구자)에게서 서로 다른 주제를 몇 가지 이상 들어야 하는지
+  MIN_PEOPLE: 3,              // 공통 인터뷰 말고 현장 사람을 최소 몇 명 인터뷰해야 하는지
   MIN_QUESTIONS_PER_PERSON: 3, // 한 사람에게서 서로 다른 주제(역사 자료)를 몇 가지 이상 들어야 '취재 완료'인지
 
   // 기사 본문 최소 글자 수
