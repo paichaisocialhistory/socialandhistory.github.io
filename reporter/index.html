@@ -163,6 +163,26 @@
         <div class="actions">
           <button id="editAgainBtn" class="btn" type="button">기사 고치기</button>
           <button id="downloadBtn2" class="btn" type="button">💾 파일로 저장</button>
+          <button id="toShareBtn" class="btn primary" type="button" hidden>📰 우리 반 기사 보러 가기 →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. 공유: 우리 반 기사 읽고 댓글 달기 -->
+    <section id="screen-share" class="screen" hidden>
+      <div class="paper">
+        <p class="kicker">우리 반 신문</p>
+        <h1 class="headline">친구들의 기사 읽고 댓글 달기</h1>
+        <p class="lead">댓글은 <b>선생님이 확인하고 승인한 뒤에</b> 친구들에게 보여요. 잘 쓴 점 한 가지와, 궁금한 점이나 제안 한 가지를 역사적 사실을 들어 써 보세요.</p>
+        <form id="codeForm" class="code-row" autocomplete="off">
+          <input id="classCodeInput" type="text" maxlength="20" placeholder="선생님이 알려 준 반 코드" required>
+          <button class="btn primary" type="submit">기사 불러오기</button>
+        </form>
+        <p id="shareStatus" class="share-status" hidden></p>
+        <div id="articleList" class="article-list"></div>
+        <div class="actions">
+          <button id="shareBackBtn" class="btn" type="button">← 내 기사로</button>
+          <button id="shareRefreshBtn" class="btn" type="button">🔄 새로고침</button>
         </div>
       </div>
     </section>

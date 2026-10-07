@@ -8,6 +8,8 @@
   const MIN_COMMON = CONFIG.MIN_COMMON_TOPICS || 5;
   const MIN_LEN = CONFIG.MIN_ARTICLE_LENGTH || 200;
   const AI_URL = (CONFIG.AI_URL || '').trim().replace(/\/+$/, '');
+  const SHEET_URL = (CONFIG.SHEET_URL || '').trim();
+  const SHARE_ENABLED = CONFIG.SHARE_ENABLED !== false;
   const STORAGE_KEY = 'war-reporter-v1';
 
   const $ = (sel) => document.querySelector(sel);
@@ -68,7 +70,7 @@
     $('#who').hidden = !s;
     if (s) $('#whoText').textContent = `${s.grade}학년 ${s.classNo}반 ${s.studentNo}번 ${s.name} 기자`;
     window.scrollTo(0, 0);
-    const render = { briefing: renderBriefing, map: renderMap, interview: renderInterview, article: renderArticle, done: renderDone }[screen];
+    const render = { briefing: renderBriefing, map: renderMap, interview: renderInterview, article: renderArticle, done: renderDone, share: renderShare }[screen];
     if (render) render();
   }
 
@@ -568,7 +570,7 @@
   }
 
   async function submit() {
-    const url = (CONFIG.SHEET_URL || '').trim();
+    const url = SHEET_URL;
     if (!url) return 'no-url';
     const body = JSON.stringify(payload());
     const headers = { 'Content-Type': 'text/plain;charset=utf-8' }; // 단순 요청으로 보내야 Apps Script가 받음
@@ -627,6 +629,7 @@
     box.textContent = text;
     $('#doneKicker').textContent = `호외 · ${DATA.title} 특별 취재`;
 
+    $('#toShareBtn').hidden = !canShare();
     const d = payload();
     $('#printed').replaceChildren(
       el('div', { class: 'p-meta' }, `${d.grade}학년 ${d.classNo}반 ${d.name} 기자 · 취재원: ${d.people}`),
@@ -636,11 +639,116 @@
     );
   }
 
+  // ---------- 7. 공유: 우리 반 기사 읽고 댓글 달기 ----------
+  const canShare = () => SHARE_ENABLED && !!SHEET_URL && (state.lastResult === 'ok' || state.lastResult === 'unconfirmed');
+  const opened = new Set(); // 펼쳐 둔 기사
+
+  async function sheetCall(body) {
+    try {
+      const res = await fetch(SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, error: '연결하지 못했어요. 잠시 뒤 다시 해 보세요.' };
+    }
+  }
+
+  function shareStatus(text, cls) {
+    const p = $('#shareStatus');
+    p.hidden = !text;
+    p.className = 'share-status' + (cls ? ' ' + cls : '');
+    p.textContent = text || '';
+  }
+
+  function whoAmI() {
+    const s = state.student;
+    return { grade: s.grade, classNo: s.classNo, name: s.name, studentId: `${s.grade}-${s.classNo}-${s.studentNo}-${s.name}`, classCode: state.classCode || '' };
+  }
+
+  function renderShare() {
+    $('#classCodeInput').value = state.classCode || '';
+    if (state.classCode) loadArticles();
+    else { $('#articleList').replaceChildren(); shareStatus('선생님이 알려 준 반 코드를 넣고 [기사 불러오기]를 누르세요.'); }
+  }
+
+  let loading = false;
+  async function loadArticles() {
+    if (loading) return;
+    loading = true;
+    shareStatus('기사를 불러오는 중…');
+    const res = await sheetCall({ action: 'list', ...whoAmI() });
+    loading = false;
+    if (!res.success) { shareStatus(res.error || '기사를 불러오지 못했어요.', 'err'); return; }
+    const articles = [...res.articles].sort((a, b) => b.mine - a.mine);
+    shareStatus(articles.length ? `우리 반 기사 ${articles.length}편` : '아직 제출된 기사가 없어요.');
+    $('#articleList').replaceChildren(...articles.map(articleCard));
+  }
+
+  function articleCard(a) {
+    const approved = a.comments.filter((c) => !c.pending).length;
+    const detail = el('div', { class: 'article-detail', hidden: !opened.has(a.id) },
+      el('div', { class: 'p-body' }, a.body),
+      el('div', { class: 'comments' },
+        a.comments.length
+          ? a.comments.map((c) => el('div', { class: 'comment' + (c.pending ? ' pending' : '') },
+              el('div', { class: 'c-meta' }, `${c.author} · ${c.time}${c.pending ? ' · ⏳ 선생님 승인 대기 (나만 보여요)' : ''}`),
+              el('div', null, c.text)))
+          : el('p', { class: 'empty' }, '아직 승인된 댓글이 없어요.')),
+      a.mine ? null : commentForm(a));
+    const head = el('button', { class: 'article-head', type: 'button' },
+      el('span', { class: 'a-title' }, a.headline),
+      el('span', { class: 'a-meta' }, `${a.mine ? '📌 내 기사 · ' : ''}${a.reporter} · 취재원: ${a.people} · 💬 ${approved}`));
+    head.addEventListener('click', () => {
+      detail.hidden = !detail.hidden;
+      if (detail.hidden) opened.delete(a.id); else opened.add(a.id);
+    });
+    return el('article', { class: 'article-card' + (a.mine ? ' mine' : '') }, head, detail);
+  }
+
+  function commentForm(a) {
+    const ta = el('textarea', { rows: 3, maxlength: 200, placeholder: '잘 쓴 점 한 가지 + 궁금한 점이나 제안 한 가지 (예: 흥남 철수 장면이 생생했어. 피란민이 왜 남쪽으로 왔는지도 써 주면 좋겠어.)' });
+    const count = el('span', null, '0 / 200자');
+    const btn = el('button', { class: 'btn primary', type: 'submit' }, '댓글 보내기');
+    const msg = el('p', { class: 'share-status', hidden: true });
+    ta.addEventListener('input', () => { count.textContent = `${ta.value.length} / 200자`; });
+    const form = el('form', { class: 'comment-form' }, ta, el('div', { class: 'row' }, count, btn), msg);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = ta.value.trim();
+      if (text.length < 5) { msg.hidden = false; msg.className = 'share-status err'; msg.textContent = '댓글을 5글자 이상 써 주세요.'; return; }
+      btn.disabled = true;
+      const res = await sheetCall({ action: 'comment', ...whoAmI(), articleId: a.id, text });
+      btn.disabled = false;
+      msg.hidden = false;
+      if (res.success) {
+        opened.add(a.id);
+        loadArticles();
+      } else {
+        msg.className = 'share-status err';
+        msg.textContent = res.error || '댓글을 보내지 못했어요.';
+      }
+    });
+    return form;
+  }
+
+  $('#codeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    state.classCode = $('#classCodeInput').value.trim();
+    save();
+    loadArticles();
+  });
+  $('#shareRefreshBtn').addEventListener('click', () => { if (state.classCode) loadArticles(); });
+  $('#shareBackBtn').addEventListener('click', () => show('done'));
+  $('#toShareBtn').addEventListener('click', () => show('share'));
+
   // ---------- 시작 ----------
   // 무료 서버는 쉬고 있으면 깨어나는 데 시간이 걸리므로, 사이트를 열 때 미리 깨워 둔다
   if (AI_URL) fetch(AI_URL + '/', { mode: 'no-cors' }).catch(() => {});
   if (!state.student) show('login');
   else if (state.screen === 'interview' && !peopleById[state.currentPid]) show('map');
-  else if (state.screen === 'done' && !state.lastResult) show('article');
+  else if ((state.screen === 'done' || state.screen === 'share') && !state.lastResult) show('article');
   else show(state.screen === 'login' ? 'briefing' : state.screen);
 })();

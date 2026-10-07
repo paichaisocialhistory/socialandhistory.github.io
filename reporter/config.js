@@ -17,4 +17,7 @@ window.REPORTER_CONFIG = {
 
   // 기사 본문 최소 글자 수
   MIN_ARTICLE_LENGTH: 200,
+
+  // 제출 뒤 '우리 반 기사' 보기·댓글 달기 (댓글은 선생님이 시트에서 승인해야 보임)
+  SHARE_ENABLED: true,
 };
