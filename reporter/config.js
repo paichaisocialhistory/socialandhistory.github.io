@@ -4,7 +4,7 @@
 // 이 파일만 고치면 됩니다. 자세한 방법은 REPORTER.md를 보세요.
 window.REPORTER_CONFIG = {
   // Google Apps Script 웹 앱 URL (…/exec). 비워 두면 제출 대신 파일 저장만 됩니다.
-  SHEET_URL: 'https://script.google.com/macros/s/AKfycbxJCSi07XoAhdHqmKZB5mI6VMSSIbhI9BjXwgsNc6AfPXs22cRpdeKKxuL2YDC_DimqNg/exec',
+  SHEET_URL: 'https://script.google.com/macros/s/AKfycbxex0NUp_4zo2EwgbyhQ-1L9Fpub8SKZs-tJj4Mt9pCwlqneuFoS7-szaFUAmAkqOehIg/exec',
 
   // AI 인터뷰 서버
   //   '/'  → 이 사이트를 Vercel에 올렸을 때 (권장: 서버가 잠들지 않아 기다림 없음)
