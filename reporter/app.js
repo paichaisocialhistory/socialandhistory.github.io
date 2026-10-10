@@ -191,57 +191,9 @@
     $('#askInput').focus();
   }
 
-  // ---------- 구술 영상 ----------
-  // data.js의 인물에 video: { youtube: '영상ID' 또는 file: 'videos/파일.mp4', title, credit } 를 넣고,
-  // 자료(questions)에 clip: ['3:20', '5:10'] 을 넣으면 그 대답에서 해당 장면으로 바로 갈 수 있다.
-  const toSec = (t) => (typeof t === 'number' ? t : String(t).split(':').reduce((acc, n) => acc * 60 + Number(n), 0));
-  const clipLabel = (c) => `${c[0]}${c[1] ? '~' + c[1] : ''}`;
-
-  function renderVideo(p) {
-    const box = $('#ivVideo');
-    box.hidden = !p.video;
-    if (!p.video) { $('#videoFrame').replaceChildren(); return; }
-    const v = p.video;
-    $('#videoTitle').textContent = `🎬 구술 영상 · ${v.title}`;
-    $('#videoCredit').textContent = v.credit ? `출처: ${v.credit}` : '';
-    if ($('#videoFrame').dataset.pid !== p.id) { // 다른 인물이면 영상을 새로 붙임 (자동 재생 없음)
-      $('#videoFrame').dataset.pid = p.id;
-      $('#videoFrame').replaceChildren(videoElement(v, null, false));
-    }
-  }
-
-  function videoElement(v, clip, autoplay) {
-    const start = clip ? toSec(clip[0]) : 0;
-    const end = clip && clip[1] ? toSec(clip[1]) : 0;
-    if (v.youtube) {
-      const q = new URLSearchParams({ rel: '0', playsinline: '1' });
-      if (start) q.set('start', start);
-      if (end) q.set('end', end);
-      if (autoplay) q.set('autoplay', '1');
-      return el('iframe', {
-        src: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.youtube)}?${q}`,
-        title: v.title, allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true,
-      });
-    }
-    const video = el('video', { src: v.file, controls: true, preload: 'metadata', playsinline: true });
-    if (start) video.addEventListener('loadedmetadata', () => { video.currentTime = start; }, { once: true });
-    if (end) video.addEventListener('timeupdate', () => { if (video.currentTime >= end) video.pause(); });
-    if (autoplay) video.autoplay = true;
-    return video;
-  }
-
-  function playClip(p, clip) {
-    const frame = $('#videoFrame');
-    frame.dataset.pid = p.id;
-    frame.replaceChildren(videoElement(p.video, clip, true));
-    $('#ivVideo').open = true;
-    $('#ivVideo').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-
   function renderInterview() {
     const p = peopleById[state.currentPid];
     if (!p) return show('map');
-    renderVideo(p);
     $('#ivEmoji').textContent = p.emoji;
     $('#ivName').textContent = p.name;
     $('#ivMeta').textContent = `${p.role} · ${p.when} · ${p.where}`;
@@ -271,10 +223,6 @@
 
     // 대답에 쓰인 역사 자료 (AI가 고른 번호를 data.js의 실제 자료로 바꿔서 보여 줌)
     const srcs = (m.basis || []).map((id) => p.questions.find((q) => q.id === id)).filter(Boolean);
-    const clipSrc = p.video && srcs.find((q) => q.clip);
-    if (clipSrc) {
-      tools.append(el('button', { type: 'button', onclick: () => playClip(p, clipSrc.clip) }, `🎬 영상에서 보기 (${clipLabel(clipSrc.clip)})`));
-    }
     if (srcs.length) {
       const srcBox = el('div', { class: 'src', hidden: true },
         ...srcs.map((q) => el('div', null, `📜 ${q.src}`)));
