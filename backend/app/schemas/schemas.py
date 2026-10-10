@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Any, Dict
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Any, Dict, Literal
 from uuid import UUID
 from datetime import datetime
 
@@ -145,6 +145,41 @@ class ReflectionResponse(BaseModel):
     reflection1: str
     reflection2: str
     sheetSynced: bool
+
+
+# ---- 종군기자 인터뷰 (reporter/ 정적 사이트) ----
+class InterviewPersona(BaseModel):
+    name: str = Field(max_length=40)
+    role: str = Field(max_length=80)
+    when: str = Field(max_length=40)
+    where: str = Field(max_length=80)
+    intro: str = Field(default="", max_length=300)
+
+
+class InterviewSource(BaseModel):
+    """인물이 기댈 수 있는 역사 자료 한 묶음 (reporter/data.js의 질문 하나)"""
+    id: str = Field(max_length=40)
+    topic: str = Field(max_length=120)
+    testimony: str = Field(max_length=600)
+    fact: str = Field(max_length=600)
+
+
+class InterviewTurn(BaseModel):
+    speaker: Literal["reporter", "interviewee"]
+    text: str = Field(max_length=800)
+
+
+class InterviewAskRequest(BaseModel):
+    studentId: str = Field(min_length=1, max_length=80)
+    person: InterviewPersona
+    sources: List[InterviewSource] = Field(min_length=1, max_length=20)
+    history: List[InterviewTurn] = Field(default=[], max_length=12)
+    question: str = Field(min_length=1, max_length=200)
+
+
+class InterviewAskResponse(BaseModel):
+    answer: str
+    basis: List[str]
 
 
 # ---- Teacher Auth ----

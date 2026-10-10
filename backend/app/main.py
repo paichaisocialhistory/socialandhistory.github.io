@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.core.database import engine, Base, AsyncSessionLocal
 from app.core.security import get_password_hash
 from app.models.models import Teacher
-from app.api import session, persons, quiz, trial, reflection, teacher
+from app.api import session, persons, quiz, trial, reflection, teacher, reporter
 from app.services.ai_service import check_ai_health
 
 
@@ -74,6 +74,7 @@ app.include_router(quiz.router, prefix="/api")
 app.include_router(trial.router, prefix="/api")
 app.include_router(reflection.router, prefix="/api")
 app.include_router(teacher.router, prefix="/api")
+app.include_router(reporter.router, prefix="/api")
 
 
 @app.get("/")

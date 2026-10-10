@@ -2,6 +2,8 @@
 
 > 중학교 역사 수업을 위한 AI 기반 모의 법정 웹 애플리케이션
 
+> 📰 **새 수업 자료: 전쟁 속 종군기자** — 6·25 전쟁 속 사람들을 인터뷰하고 기사를 쓰는 시뮬레이션 (`reporter/` 폴더를 GitHub Pages로 열고, AI 대답은 이 백엔드 서버가 만듦). 안내는 [REPORTER.md](REPORTER.md)를 보세요.
+
 ## 🏛️ 프로젝트 개요
 
 AI 역사 모의 법정은 중학생이 역사 속 인물을 재판하는 형식으로 역사를 깊이 이해하는 교육 플랫폼입니다.
@@ -196,6 +198,7 @@ POST /api/quiz/submit          # 퀴즈 답안 제출
 POST /api/trial/start          # 재판 시작
 POST /api/trial/turn           # 재판 턴 처리
 POST /api/reflection           # 느낀점 제출
+POST /api/reporter/ask         # 종군기자 인터뷰 AI 대답 (reporter/ 사이트용)
 POST /api/teacher/login        # 교사 로그인
 GET  /api/teacher/classes      # 학급 목록
 GET  /api/teacher/classes/{id}/students  # 학생 현황

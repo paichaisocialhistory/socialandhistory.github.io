@@ -106,6 +106,10 @@
 
 ---
 
+## (선택) 종군기자 인터뷰 시뮬레이션에도 쓰기
+
+같은 서버로 `reporter/` 사이트의 AI 인터뷰도 할 수 있습니다. `CORS_ORIGINS`에 GitHub Pages 주소를 쉼표로 더하고, `reporter/config.js`의 `AI_URL`에 서버 주소를 넣으세요. 자세한 내용은 [REPORTER.md](REPORTER.md)를 보세요.
+
 ## 코드를 고치면?
 
 GitHub의 `main` 브랜치에 새 코드를 올리면 Render와 Vercel이 **자동으로 다시 배포**합니다.
