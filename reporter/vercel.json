@@ -1,5 +1,1 @@
-{
-  "functions": {
-    "api/reporter/ask.js": { "maxDuration": 30 }
-  }
-}
+{"functions":{"api/reporter/ask.js":{"maxDuration":30},"api/reporter/feedback.js":{"maxDuration":60}}}

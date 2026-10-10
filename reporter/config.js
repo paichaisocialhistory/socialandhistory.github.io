@@ -20,6 +20,9 @@ window.REPORTER_CONFIG = {
   // 기사 본문 최소 글자 수
   MIN_ARTICLE_LENGTH: 200,
 
+  // 기사 쓰기 화면의 '편집장 검토'(AI 피드백)를 한 학생이 받을 수 있는 횟수 (0이면 AI 피드백 끔, 기본 점검만)
+  FEEDBACK_LIMIT: 5,
+
   // 제출 뒤 '우리 반 기사' 보기·댓글 달기 (댓글은 선생님이 시트에서 승인해야 보임)
   SHARE_ENABLED: true,
 };
