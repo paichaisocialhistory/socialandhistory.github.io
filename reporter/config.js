@@ -4,7 +4,7 @@
 // 이 파일만 고치면 됩니다. 자세한 방법은 REPORTER.md를 보세요.
 window.REPORTER_CONFIG = {
   // Google Apps Script 웹 앱 URL (…/exec). 비워 두면 제출 대신 파일 저장만 됩니다.
-  SHEET_URL: '',
+  SHEET_URL: 'https://script.google.com/macros/s/AKfycbxJCSi07XoAhdHqmKZB5mI6VMSSIbhI9BjXwgsNc6AfPXs22cRpdeKKxuL2YDC_DimqNg/exec',
 
   // AI 인터뷰 서버
   //   '/'  → 이 사이트를 Vercel에 올렸을 때 (권장: 서버가 잠들지 않아 기다림 없음)
@@ -19,6 +19,9 @@ window.REPORTER_CONFIG = {
 
   // 기사 본문 최소 글자 수
   MIN_ARTICLE_LENGTH: 200,
+
+  // 기사 쓰기 화면의 '편집장 검토'(AI 피드백)를 한 학생이 받을 수 있는 횟수 (0이면 AI 피드백 끔, 기본 점검만)
+  FEEDBACK_LIMIT: 5,
 
   // 제출 뒤 '우리 반 기사' 보기·댓글 달기 (댓글은 선생님이 시트에서 승인해야 보임)
   SHARE_ENABLED: true,

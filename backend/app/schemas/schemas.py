@@ -182,6 +182,45 @@ class InterviewAskResponse(BaseModel):
     basis: List[str]
 
 
+class FeedbackArticle(BaseModel):
+    headline: str = Field(max_length=80)
+    body: str = Field(min_length=1, max_length=4000)
+    learned: str = Field(default="", max_length=1000)
+    think: str = Field(default="", max_length=1000)
+
+
+class FeedbackPerson(BaseModel):
+    name: str = Field(max_length=40)
+    role: str = Field(max_length=80)
+    when: str = Field(max_length=40)
+
+
+class FeedbackSource(BaseModel):
+    """학생이 인터뷰에서 실제로 들은 역사 자료"""
+    person: str = Field(max_length=40)
+    topic: str = Field(max_length=120)
+    fact: str = Field(max_length=600)
+
+
+class ArticleFeedbackRequest(BaseModel):
+    studentId: str = Field(min_length=1, max_length=80)
+    article: FeedbackArticle
+    people: List[FeedbackPerson] = Field(default=[], max_length=20)
+    sources: List[FeedbackSource] = Field(default=[], max_length=80)
+
+
+class FeedbackFactCheck(BaseModel):
+    sentence: str
+    comment: str
+
+
+class ArticleFeedbackResponse(BaseModel):
+    strengths: List[str]
+    suggestions: List[str]
+    factChecks: List[FeedbackFactCheck]
+    question: str
+
+
 # ---- Teacher Auth ----
 class TeacherLogin(BaseModel):
     email: EmailStr

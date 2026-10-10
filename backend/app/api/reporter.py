@@ -9,8 +9,10 @@ from collections import defaultdict, deque
 from datetime import date
 from fastapi import APIRouter, HTTPException
 from app.core.config import settings
-from app.schemas.schemas import InterviewAskRequest, InterviewAskResponse
-from app.services.ai_service import generate_interview_answer
+from app.schemas.schemas import (
+    InterviewAskRequest, InterviewAskResponse, ArticleFeedbackRequest, ArticleFeedbackResponse,
+)
+from app.services.ai_service import generate_interview_answer, generate_article_feedback
 
 router = APIRouter(prefix="/reporter", tags=["reporter"])
 
@@ -53,3 +55,19 @@ async def ask(data: InterviewAskRequest):
         print(f"AI interview error: {e}")
         raise HTTPException(status_code=503, detail="AI가 지금 대답하지 못했습니다.")
     return InterviewAskResponse(**result)
+
+
+@router.post("/feedback", response_model=ArticleFeedbackResponse)
+async def feedback(data: ArticleFeedbackRequest):
+    """학생 기사를 취재한 역사 자료와 비교해 편집장 피드백"""
+    _check_limits(data.studentId)
+    try:
+        result = await generate_article_feedback(
+            article=data.article.model_dump(),
+            people=[p.model_dump() for p in data.people],
+            sources=[s.model_dump() for s in data.sources],
+        )
+    except Exception as e:
+        print(f"AI feedback error: {e}")
+        raise HTTPException(status_code=503, detail="AI가 지금 피드백하지 못했습니다.")
+    return ArticleFeedbackResponse(**result)

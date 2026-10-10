@@ -37,6 +37,7 @@ const COLUMNS = [
   ['기사본문', d => d.body || ''],
   ['새로알게된사실', d => d.learned || ''],
   ['전쟁과평화에대한생각', d => d.think || ''],
+  ['AI피드백횟수', d => d.feedbackCount || 0],
   ['취재수첩', d => d.quotes || ''],
   ['인터뷰기록', d => d.transcript || ''],
   ['학생ID', d => d.studentId || ''],

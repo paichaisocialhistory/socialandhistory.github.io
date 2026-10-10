@@ -247,6 +247,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   .chat { max-height: 50vh; }
 }
 
+/* 편집장 검토 */
+.feedback { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 14px 16px; display: grid; gap: 12px; }
+.feedback-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.feedback-head > div { min-width: 0; flex: 1 1 220px; }
+.feedback-title { font-family: var(--serif); font-weight: 900; font-size: 1.1rem; }
+.feedback .muted { font-size: .9rem; }
+#feedbackBox { display: grid; gap: 12px; }
+.fb-group h4 { margin: 0 0 4px; font-size: .95rem; }
+.fb-group ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.fb-check { list-style: none; margin-left: -1.2em; }
+.fb-check.ok::before { content: '✔ '; color: var(--ok); font-weight: 700; }
+.fb-check.no::before { content: '△ '; color: var(--warn); font-weight: 700; }
+.fb-fact q { display: block; font-family: var(--serif); font-weight: 600; color: var(--ink-2); }
+.fb-fact q::before { content: '“'; } .fb-fact q::after { content: '”'; }
+.fb-note { font-size: .85rem; color: var(--ink-2); margin: 0; }
+
 @media print {
   .topbar, .actions, .status { display: none !important; }
   body { background: #fff; }
