@@ -107,9 +107,44 @@ SHEET_URL: 'https://script.google.com/macros/s/AKfy...../exec',
 - 공유 기능을 아예 끄려면 `reporter/config.js`의 `SHARE_ENABLED`를 `false`로 바꿉니다.
 - ⚠️ 로그인에 비밀번호가 없어 다른 학생 이름으로 댓글을 쓸 수 있습니다. 승인할 때 확인해 주세요.
 
-## 2. AI 서버 연결하기
+## 2. 사이트와 AI 올리기
 
-모의 법정용으로 [DEPLOY.md](DEPLOY.md)를 따라 만든 Render 서버(`hist-court-backend`)를 그대로 씁니다. 아직 없다면 DEPLOY.md의 ①~③을 먼저 하세요. (Claude API 키가 필요합니다.)
+두 가지 방법이 있습니다. **공모전 제출처럼 누가 언제 들어와도 바로 써야 하면 A(Vercel)를 쓰세요.**
+
+| | A. Vercel (권장) | B. GitHub Pages + Render |
+|---|---|---|
+| 처음 접속 | 바로 대답 (서버가 잠들지 않음) | 무료 Render 서버가 잠들어 있으면 깨우는 데 30초~1분 |
+| 주소 | `https://○○.vercel.app` 한 곳 | 사이트(GitHub Pages)와 AI 서버(Render)가 따로 |
+| 비용 | Vercel 무료 + Claude API 사용량 | Render 무료 + Claude API 사용량 |
+| 사용량 제한 | 학생별 시간당 질문 수(느슨함) + Claude 콘솔 월 한도 | 학생별·하루 전체 제한 + Claude 콘솔 월 한도 |
+
+### A. Vercel에 올리기 (권장, 약 10분)
+
+`reporter/` 폴더에는 화면과 함께 AI 함수(`reporter/api/reporter/ask.js`)가 들어 있습니다. Vercel에 올리면 둘이 같은 주소에서 동작하고, 서버가 잠들지 않아 들어가자마자 AI가 대답합니다.
+
+1. https://vercel.com 에 GitHub 계정으로 로그인 → **Add New → Project** → 이 저장소를 **Import**.
+2. **Root Directory**를 `reporter`로 고릅니다. (모의 법정 화면은 `frontend`였으니 프로젝트를 하나 더 만드는 것입니다.)
+3. **Environment Variables**에 추가합니다.
+
+   | 이름 | 값 |
+   |---|---|
+   | `ANTHROPIC_API_KEY` | Claude API 키 (`sk-ant-…`, 모의 법정과 같은 키 가능) |
+   | `CLAUDE_MODEL` | (선택) 기본 `claude-haiku-4-5` |
+   | `REPORTER_STUDENT_HOURLY_LIMIT` | (선택) 학생 한 명이 한 시간에 할 수 있는 질문 수, 기본 60 |
+
+4. **Deploy**. 끝나면 사이트 주소(`https://○○.vercel.app`)가 나옵니다. 이 주소가 학생·심사위원에게 줄 주소입니다.
+5. [reporter/config.js](reporter/config.js)의 `AI_URL`을 `'/'`로 바꾸고 커밋합니다. (같은 사이트의 AI 함수를 쓰라는 뜻) Vercel이 자동으로 다시 배포합니다.
+   ```js
+   AI_URL: '/',
+   ```
+6. **확인**: 사이트에서 로그인 → 인터뷰 대답 아래에 🤖 표시가 붙으면 성공입니다.
+
+> CORS 설정은 필요 없습니다(같은 주소). Google 시트 연동(1장)은 그대로 씁니다.
+> Vercel 함수에는 하루 전체 질문 수 제한이 없으니, **Claude 콘솔의 Settings → Limits에서 월 사용 한도를 꼭 정해 두세요.**
+
+### B. GitHub Pages + Render
+
+모의 법정용으로 [DEPLOY.md](DEPLOY.md)를 따라 만든 Render 서버(`hist-court-backend`)를 그대로 씁니다. 아직 없다면 DEPLOY.md의 ①~③을 먼저 하세요.
 
 1. **서버 주소 넣기**: [reporter/config.js](reporter/config.js)의 `AI_URL`에 Render 서버 주소를 넣습니다. (끝에 `/` 없이)
    ```js
@@ -120,9 +155,10 @@ SHEET_URL: 'https://script.google.com/macros/s/AKfy...../exec',
    https://xxxx.vercel.app,https://paichaisocialhistory.github.io
    ```
    **Save Changes**를 누르면 서버가 다시 시작됩니다.
-3. **확인**: 사이트에서 로그인 → 브리핑 화면의 '알아 두기'에 "AI가 실제 역사 자료를 바탕으로 만듭니다"가 보이고, 인터뷰 대답 아래에 🤖 표시가 붙으면 성공입니다.
+3. **확인**: 사이트에서 로그인 → 인터뷰 대답 아래에 🤖 표시가 붙으면 성공입니다.
+4. 사이트 열기는 3장(GitHub Pages)을 따릅니다.
 
-> 💡 무료 서버는 15분 동안 쓰지 않으면 잠듭니다. 사이트를 열면 서버를 자동으로 깨우지만 30초~1분 걸리므로, **수업 5분 전에 사이트를 한 번 열어 두세요.** 깨어나기 전의 질문에는 준비된 대답이 나옵니다.
+> 💡 무료 Render 서버는 15분 동안 쓰지 않으면 잠듭니다. 사이트를 열면 서버를 자동으로 깨우지만 30초~1분 걸리므로, **수업 5분 전에 사이트를 한 번 열어 두세요.** 깨어나기 전의 질문에는 준비된 대답이 나옵니다. 잠들지 않게 하려면 Render 유료 요금제(Starter)를 쓰거나 A(Vercel)로 옮기세요.
 
 ### 비용과 사용량 제한
 
@@ -138,7 +174,7 @@ SHEET_URL: 'https://script.google.com/macros/s/AKfy...../exec',
   제한에 걸리면 학생 화면은 준비된 대답으로 이어 갑니다. 서버가 다시 시작되면 횟수가 초기화됩니다.
 - Claude 콘솔의 **Settings → Limits**에서 월 사용 한도를 꼭 정해 두세요.
 
-## 3. 사이트 열기 (GitHub Pages)
+## 3. 사이트 열기 (B 방법: GitHub Pages)
 
 1. GitHub 저장소 → **Settings → Pages**
 2. **Source: Deploy from a branch**, **Branch: `main`**, 폴더 **`/ (root)`** → **Save**
@@ -165,6 +201,26 @@ SHEET_URL: 'https://script.google.com/macros/s/AKfy...../exec',
   - `keys` AI가 대답하지 못할 때 준비된 대답을 고르는 낱말들 (띄어쓰기는 무시됨, 길고 구체적인 낱말일수록 우선)
 - **인물 추가**: `people`에 같은 모양으로 한 명을 더 넣으면 취재 목록에 바로 나타납니다.
 - **다른 전쟁**(임진왜란, 병자호란 등)으로 바꾸기: `title`, `mission`, `timeline`, `people`, `reflections`를 바꾸면 됩니다.
+
+### 구술 영상 붙이기
+
+인물에게 구술(증언) 영상을 붙이면, 인터뷰 화면 위쪽에 영상이 나오고 대답마다 **🎬 영상에서 보기 (3:20~5:10)** 버튼이 생겨 그 장면부터 재생됩니다.
+
+```js
+{
+  id: 'soonok', name: '이순옥', /* … */
+  video: { youtube: '영상ID11자리', title: '흥남 철수 피란민 구술', credit: '○○기관 구술 아카이브 (2015)' },
+  // 유튜브가 아니라 파일이면: video: { file: 'videos/hungnam.mp4', title: '…', credit: '…' }
+  questions: [
+    { id: 'ship', q: '…', keys: [/* … */], a: '…', src: '… (○○기관 구술 영상 3:20~5:10)', clip: ['3:20', '5:10'] },
+  ],
+}
+```
+
+- `youtube`에는 영상 주소 `https://www.youtube.com/watch?v=○○○`의 `v=` 뒤 글자만 넣습니다.
+- 영상 파일은 `reporter/videos/` 폴더에 넣고 `file`로 지정합니다. 브라우저 대부분이 재생하는 **MP4(H.264)**로 넣으세요. 파일이 크면 저장소가 무거워지므로 유튜브(일부 공개)를 권합니다.
+- 그 장면이 대답의 근거로 쓰일 때 버튼이 나옵니다(AI가 그 자료를 근거로 고른 경우).
+- 영상의 증언자는 실존 인물입니다. 인터뷰 인물은 지금처럼 가상 인물로 두고, 영상은 "참고 구술 영상"으로 출처를 밝혀 보여 주는 것을 권합니다. 영상을 쓸 수 있는지(공개 범위, 이용 조건)는 제공 기관에 확인하세요.
 
 ## ⚠️ 주의
 

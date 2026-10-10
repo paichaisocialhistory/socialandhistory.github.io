@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/reporter/ask.js": { "maxDuration": 30 }
+  }
+}

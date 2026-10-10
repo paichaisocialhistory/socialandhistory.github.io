@@ -1,0 +1,11 @@
+{
+  "name": "war-reporter",
+  "private": true,
+  "description": "전쟁 속 종군기자 - 정적 사이트 + Vercel 서버리스 AI 인터뷰 함수",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "zod": "^4.6.5"
+  }
+}
