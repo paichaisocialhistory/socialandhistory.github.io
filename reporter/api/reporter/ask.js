@@ -8,7 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
-import { findApiKey } from '../_anthropic.js';
+import { findApiKey, errorReason } from '../_anthropic.js';
 
 const client = new Anthropic({ apiKey: findApiKey()?.value ?? null, timeout: 40_000 });
 const MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
@@ -86,6 +86,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ answer: out.answer.trim(), basis });
   } catch (e) {
     console.error('AI interview error:', e);
-    return res.status(503).json({ detail: 'AI가 지금 대답하지 못했습니다.' });
+    return res.status(503).json({ detail: 'AI가 지금 대답하지 못했습니다.', reason: errorReason(e) });
   }
 }

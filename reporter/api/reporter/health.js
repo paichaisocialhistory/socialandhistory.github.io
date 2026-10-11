@@ -3,8 +3,11 @@
 // ============================================
 // 선생님이 브라우저에서 이 주소를 열면 API 키와 모델이 제대로 설정됐는지 알려 준다.
 // 모델 정보만 조회하므로 Claude 사용 요금이 들지 않는다. 키 값은 보여 주지 않는다.
+// 주소 끝에 ?test=1을 붙이면 인터뷰·피드백과 같은 방식(구조화된 답)으로 아주 짧게 실제로 물어본다 (1원 미만).
 import Anthropic from '@anthropic-ai/sdk';
-import { findApiKey, similarEnvNames } from '../_anthropic.js';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { z } from 'zod';
+import { findApiKey, similarEnvNames, errorReason } from '../_anthropic.js';
 
 const MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 
@@ -26,7 +29,25 @@ export default async function handler(req, res) {
   try {
     const client = new Anthropic({ apiKey: key.value, timeout: 15_000 });
     const model = await client.models.retrieve(MODEL);
-    return res.status(200).json({ ok: true, model: model.id, keyName: key.name, deployment, message: 'AI 연결 정상입니다.' });
+    const wantTest = String(req.url || '').includes('test=1') || (req.query && req.query.test === '1');
+    if (!wantTest) {
+      return res.status(200).json({ ok: true, model: model.id, keyName: key.name, deployment, message: 'AI 연결 정상입니다.',
+        tip: '주소 끝에 ?test=1을 붙이면 실제로 짧게 물어보는 시험까지 합니다.' });
+    }
+    try {
+      const started = Date.now();
+      const r = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 100,
+        messages: [{ role: 'user', content: '연결 시험이다. reply에 "정상"이라고만 써라.' }],
+        output_config: { format: zodOutputFormat(z.object({ reply: z.string() })) },
+      });
+      return res.status(200).json({ ok: true, model: model.id, keyName: key.name, deployment,
+        message: 'AI 연결 정상, 실제 대답 시험도 통과했습니다.', test: { reply: r.parsed_output?.reply ?? null, seconds: (Date.now() - started) / 1000 } });
+    } catch (e) {
+      return res.status(200).json({ ok: false, model: model.id, keyName: key.name, deployment,
+        problem: '키와 모델은 맞지만 실제 대답 시험에서 실패했습니다. 아래 reason을 알려 주세요.', reason: errorReason(e) });
+    }
   } catch (e) {
     const problem = e instanceof Anthropic.AuthenticationError ? 'API 키가 올바르지 않습니다. 키를 다시 복사해 넣고 Redeploy 하세요.'
       : e instanceof Anthropic.NotFoundError ? `모델 이름(${MODEL})이 올바르지 않습니다. CLAUDE_MODEL 값을 확인하세요.`
