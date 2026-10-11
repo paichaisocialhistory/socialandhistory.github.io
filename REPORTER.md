@@ -154,6 +154,9 @@ SHEET_URL: 'https://script.google.com/macros/s/AKfy...../exec',
    AI_URL: '/',
    ```
 6. **확인**: 사이트에서 로그인 → 인터뷰 대답 아래에 🤖 표시가 붙으면 성공입니다.
+   - 🤖 표시가 없으면 브라우저에서 `사이트주소/api/reporter/health`를 엽니다. (요금 들지 않음)
+     `"ok": true`면 AI 연결은 정상이니 사이트를 새로고침해 보세요. `"ok": false`면 `problem`에 적힌 대로 고친 뒤 **Deployments → ⋯ → Redeploy** 하세요.
+     이 주소가 404면 Root Directory가 `reporter`가 아니거나 최신 배포가 아직 끝나지 않은 것입니다.
 
 > CORS 설정은 필요 없습니다(같은 주소). Google 시트 연동(1장)은 그대로 씁니다.
 > Vercel 함수에는 하루 전체 질문 수 제한이 없으니, **Claude 콘솔의 Settings → Limits에서 월 사용 한도를 꼭 정해 두세요.**
