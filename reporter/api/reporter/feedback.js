@@ -8,8 +8,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
+import { findApiKey } from '../_anthropic.js';
 
-const client = new Anthropic({ timeout: 50_000 });
+const client = new Anthropic({ apiKey: findApiKey()?.value ?? null, timeout: 50_000 });
 const MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 const HOURLY_LIMIT = Number(process.env.REPORTER_FEEDBACK_HOURLY_LIMIT || 10);
 
