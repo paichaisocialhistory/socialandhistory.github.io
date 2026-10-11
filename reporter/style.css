@@ -247,6 +247,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   .chat { max-height: 50vh; }
 }
 
+/* 차례로 이어서 인터뷰하는 묶음 */
+.group { margin-top: 18px; border: 2px dashed var(--olive); border-radius: 10px; padding: 14px; display: grid; gap: 10px; background: var(--paper-2); }
+.group.done { border-style: solid; }
+.group-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.group-title { font-family: var(--serif); font-weight: 900; font-size: 19px; }
+.group-intro { margin: 0; font-size: 14px; color: var(--ink-2); }
+
 /* 편집장 검토 */
 .feedback { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 14px 16px; display: grid; gap: 12px; }
 .feedback-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }

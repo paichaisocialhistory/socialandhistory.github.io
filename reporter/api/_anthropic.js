@@ -14,3 +14,10 @@ export function findApiKey() {
 export function similarEnvNames() {
   return Object.keys(process.env).filter((n) => /anthropic|claude|api_?key/i.test(n));
 }
+
+// 실패 원인을 화면에 보여 줄 수 있게 짧게 정리 (Anthropic 오류 메시지에는 키 값이 들어가지 않는다)
+export function errorReason(e) {
+  const type = e?.error?.error?.type;
+  const msg = e?.error?.error?.message || e?.message || String(e);
+  return [e?.status, type, msg].filter(Boolean).join(' ').slice(0, 300);
+}

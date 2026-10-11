@@ -95,8 +95,22 @@
   const needed = (pid) => (peopleById[pid] && peopleById[pid].common ? MIN_COMMON : MIN_Q);
   const isDone = (pid) => askedCount(pid) >= needed(pid) && !!state.fact[pid];
   const commonDone = () => !COMMON || isDone(COMMON.id);
-  const donePeople = () => FIELD.filter((p) => isDone(p.id));
-  const canWrite = () => commonDone() && donePeople().length >= MIN_PEOPLE;
+  // 차례로 이어서 인터뷰하는 묶음 (data.js의 groups)
+  const GROUPS = (DATA.groups || [])
+    .map((g) => ({ ...g, members: g.members.filter((id) => peopleById[id]) }))
+    .filter((g) => g.members.length);
+  const groupOf = (pid) => GROUPS.find((g) => g.members.includes(pid)) || null;
+  const nextInGroup = (pid) => { const g = groupOf(pid); return g ? g.members[g.members.indexOf(pid) + 1] || null : null; };
+  // 묶음의 앞사람을 마쳐야 다음 사람을 만날 수 있다 (이미 인터뷰를 시작했다면 그대로 둔다)
+  const groupLocked = (pid) => {
+    const g = groupOf(pid);
+    if (!g || questionCount(pid) > 0) return false;
+    return g.members.slice(0, g.members.indexOf(pid)).some((id) => !isDone(id));
+  };
+  // 현장 취재는 혼자인 인물 1명, 또는 묶음 하나(모두 마쳐야)를 1명분으로 센다
+  const fieldUnits = () => [...FIELD.filter((p) => !groupOf(p.id)).map((p) => [p.id]), ...GROUPS.map((g) => g.members)];
+  const doneUnits = () => fieldUnits().filter((ids) => ids.every(isDone)).length;
+  const canWrite = () => commonDone() && doneUnits() >= MIN_PEOPLE;
 
   // ---------- 1. 로그인 ----------
   $('#loginForm').addEventListener('submit', (e) => {
@@ -152,10 +166,10 @@
   $('#briefAgainBtn').addEventListener('click', () => show('briefing'));
 
   // ---------- 3. 취재 목록 ----------
-  function personCard(p, locked) {
+  function personCard(p, locked, lockText) {
     const n = askedCount(p.id);
     const badge = locked
-      ? el('span', { class: 'badge' }, '🔒 공통 인터뷰를 마치면 만날 수 있어요')
+      ? el('span', { class: 'badge' }, lockText || '🔒 공통 인터뷰를 마치면 만날 수 있어요')
       : isDone(p.id) ? el('span', { class: 'badge done' }, `✔ 취재 완료 · 주제 ${n}가지`)
       : questionCount(p.id) > 0 ? el('span', { class: 'badge going' }, `취재 중 · 주제 ${n} / ${needed(p.id)}가지`)
       : el('span', { class: 'badge' }, '아직 만나지 않음');
@@ -168,19 +182,37 @@
       badge);
   }
 
+  function groupBox(g, locked) {
+    const doneAll = g.members.every(isDone);
+    const names = g.members.map((id) => peopleById[id].name);
+    return el('section', { class: 'group' + (doneAll ? ' done' : '') },
+      el('div', { class: 'group-head' },
+        el('div', { class: 'group-title' }, `${g.emoji} ${g.title}`),
+        el('span', { class: 'badge' + (doneAll ? ' done' : '') }, doneAll ? '✔ 묶음 취재 완료' : `${names.join(' → ')} 차례로 · 모두 마치면 1명분`)),
+      el('p', { class: 'group-intro' }, g.intro),
+      el('div', { class: 'people' }, ...g.members.map((id, i) => {
+        const prev = peopleById[g.members[i - 1]];
+        const lockedHere = locked || groupLocked(id);
+        const text = locked ? null : prev ? `🔒 ${prev.name} 님 취재를 마치면 만날 수 있어요` : null;
+        return personCard(peopleById[id], lockedHere, text);
+      })));
+  }
+
   function renderMap() {
     const locked = !commonDone();
     $('#goalText').textContent = (COMMON ? `먼저 공통 인터뷰에서 서로 다른 주제 ${MIN_COMMON}가지 이상을 묻고 사실 확인을 마치세요. 그다음 ` : '') +
-      `현장 사람 최소 ${MIN_PEOPLE}명에게서 각각 서로 다른 주제로 ${MIN_Q}가지 이상 취재하고 사실 확인까지 마치면 기사를 쓸 수 있어요.`;
+      `현장 사람 최소 ${MIN_PEOPLE}명에게서 각각 서로 다른 주제로 ${MIN_Q}가지 이상 취재하고 사실 확인까지 마치면 기사를 쓸 수 있어요.` +
+      GROUPS.map((g) => ` '${g.title}'은 ${g.members.length}명을 차례로 모두 취재해야 1명분으로 셉니다.`).join('');
     const parts = [];
     if (COMMON) {
       parts.push(el('h2', { class: 'section-title list-title' }, '① 공통 인터뷰 · 전쟁의 큰 흐름'));
       parts.push(el('div', { class: 'people' }, personCard(COMMON, false)));
       parts.push(el('h2', { class: 'section-title list-title' }, '② 현장 취재 · 전쟁 속 사람들'));
     }
-    parts.push(el('div', { class: 'people' }, ...FIELD.map((p) => personCard(p, locked))));
+    parts.push(el('div', { class: 'people' }, ...FIELD.filter((p) => !groupOf(p.id)).map((p) => personCard(p, locked))));
+    GROUPS.forEach((g) => parts.push(groupBox(g, locked)));
     $('#peopleList').replaceChildren(...parts);
-    const done = donePeople().length;
+    const done = doneUnits();
     $('#progressText').textContent =
       (COMMON ? `공통 인터뷰 ${commonDone() ? '완료 ✔' : '아직'} · ` : '') +
       `현장 취재 완료 ${done} / ${MIN_PEOPLE}명 · 수첩에 담은 말 ${state.notes.length}개` +
@@ -193,6 +225,7 @@
   // ---------- 4. 인터뷰 ----------
   function openInterview(pid) {
     if (!peopleById[pid].common && !commonDone()) return;
+    if (groupLocked(pid)) return;
     state.currentPid = pid;
     if (!state.chats[pid]) {
       const p = peopleById[pid];
@@ -277,7 +310,15 @@
     const btn = $('#factBtn');
     btn.disabled = n < need;
     btn.textContent = f ? '✅ 사실 확인 다시 보기' : '✅ 사실 확인하고 취재 마치기';
+    const next = isDone(p.id) && nextInGroup(p.id);
+    const nextBtn = $('#nextInGroupBtn');
+    nextBtn.hidden = !next;
+    if (next) nextBtn.textContent = `이어서 ${peopleById[next].name} 님 만나기 →`;
   }
+  $('#nextInGroupBtn').addEventListener('click', () => {
+    const next = nextInGroup(state.currentPid);
+    if (next) openInterview(next);
+  });
 
   function scrollChat() {
     const c = $('#chat');
@@ -485,10 +526,18 @@ ${talk}
     showFactResult(p.factCheck, correct);
     state.chats[p.id].push({ from: 'system', text: p.common
       ? '공통 인터뷰를 마쳤습니다. 이제 [← 취재 목록]으로 가서 전쟁 현장의 사람들을 만나 보세요.'
-      : `${p.name} 님 취재를 마쳤습니다. 취재 목록에서 다른 사람을 만나 보세요.` });
+      : groupEndText(p) || `${p.name} 님 취재를 마쳤습니다. 취재 목록에서 다른 사람을 만나 보세요.` });
     save();
     renderInterview();
   });
+
+  function groupEndText(p) {
+    const g = groupOf(p.id);
+    if (!g) return '';
+    const next = nextInGroup(p.id);
+    if (next) return `${p.name} 님 취재를 마쳤습니다. 이어서 같은 일을 다른 마을에서 겪은 ${peopleById[next].name} 님을 만나 보세요.`;
+    return `${p.name} 님 취재를 마쳤습니다. '${g.title}' 취재를 모두 마쳤어요. 두 사람의 말이 어디에서 같고 어디에서 다른지 수첩에 정리해 보세요.`;
+  }
 
   // ---------- 취재 수첩 ----------
   function noteLabel(n) {
@@ -614,10 +663,13 @@ ${talk}
         body: JSON.stringify(reqBody),
       });
       if (res.status === 429) return { error: '피드백을 너무 자주 요청했어요. 잠시 뒤에 다시 해 보세요.' };
-      if (!res.ok) return null;
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        return { failed: `서버 응답 ${res.status}${j.reason ? ' · ' + j.reason : ''}` };
+      }
       return await res.json();
     } catch (e) {
-      return null;
+      return { failed: e.name === 'AbortError' ? '60초 안에 답이 오지 않음' : '서버에 연결하지 못함' };
     } finally {
       clearTimeout(timer);
     }
@@ -728,7 +780,10 @@ ${article.body}
       else {
         const clean = cleanFeedback(out);
         if (clean) { fb.result = clean; fb.count += 1; }
-        else fb.result = { error: 'AI 편집장이 지금 기사를 읽지 못했어요. 기본 점검을 먼저 살펴보고, 잠시 뒤에 다시 해 보세요.' };
+        else {
+          const why = out && out.failed ? out.failed : '받은 피드백이 비어 있음';
+          fb.result = { error: `AI 편집장이 지금 기사를 읽지 못했어요. 기본 점검을 먼저 살펴보고, 잠시 뒤에 다시 해 보세요. (원인: ${why})` };
+        }
       }
     } else {
       fb.result = null;
