@@ -131,6 +131,8 @@ function classArticles_(grade, classNo) {
       headline: r[col('기사제목')],
       body: r[col('기사본문')],
       people: r[col('인터뷰한인물(질문수)')],
+      learned: r[col('새로알게된사실')],
+      think: r[col('전쟁과평화에대한생각')],
     }))
     .sort((a, b) => Number(a.studentNo) - Number(b.studentNo));
 }
@@ -161,6 +163,8 @@ function listArticles_(data) {
         headline: a.headline,
         body: a.body,
         people: a.people,
+        learned: a.learned,
+        think: a.think,
         comments: list,
       };
     }),
