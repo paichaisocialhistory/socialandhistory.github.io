@@ -708,7 +708,7 @@ ${talk}
   async function sampleFeedback({ article, people, sources }) {
     const who = people.length ? people.map((p) => `- ${p.name} (${p.role}, ${p.when})`).join('\n') : '(없음)';
     const facts = sources.length ? sources.map((x) => `- [${x.person}] ${x.topic}: ${x.fact}`).join('\n') : '(없음)';
-    const prompt = `당신은 중학교 역사 수업 '전쟁 속 종군기자' 활동의 신문사 편집장이다.
+    const prompt = `당신은 중학교 역사 수업 '전쟁 현장 취재 기자' 활동의 신문사 편집장이다.
 학생 기자가 6·25 전쟁 속 사람들을 인터뷰하고 쓴 기사를 읽고, 기사를 더 좋게 고칠 수 있도록 피드백한다.
 
 규칙:

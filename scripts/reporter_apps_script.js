@@ -1,5 +1,5 @@
 /**
- * 전쟁 속 종군기자 - Google Sheets 연동 Apps Script
+ * 전쟁 현장 취재 기자 - Google Sheets 연동 Apps Script
  *
  * 학생이 '선생님께 제출하기'를 누르면 결과가 '기자활동결과' 시트에 한 줄로 저장됩니다.
  * 같은 학생(학년-반-번호-이름)이 다시 제출하면 새 줄을 만들지 않고 그 학생의 줄을 고칩니다.
@@ -223,7 +223,7 @@ function getCommentSheet_() {
 function doGet() {
   getCodeSheet_();     // 처음 열 때 '반코드'와 '댓글' 탭을 만들어 둠
   getCommentSheet_();
-  return json_({ status: 'ok', message: '전쟁 속 종군기자 Google Apps Script가 작동 중입니다.' });
+  return json_({ status: 'ok', message: '전쟁 현장 취재 기자 Google Apps Script가 작동 중입니다.' });
 }
 
 function getSheet_() {

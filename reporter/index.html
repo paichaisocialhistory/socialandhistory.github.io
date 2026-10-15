@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>전쟁 속 종군기자</title>
+  <title>전쟁 현장 취재 기자</title>
   <meta name="description" content="6·25 전쟁 속 사람들을 인터뷰하고 기사를 쓰는 중학교 역사 시뮬레이션">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">📰 <span>전쟁 속 종군기자</span></div>
+    <div class="brand">📰 <span>전쟁 현장 취재 기자</span></div>
     <div id="who" class="who" hidden>
       <span id="whoText"></span>
       <button id="logoutBtn" class="btn-link" type="button">로그아웃</button>
@@ -24,8 +24,8 @@
     <!-- 1. 로그인 -->
     <section id="screen-login" class="screen" hidden>
       <div class="paper narrow">
-        <p class="kicker">기자증 발급</p>
-        <h1 class="headline">종군기자로 등록하기</h1>
+        <p class="kicker">기자등록증 발급</p>
+        <h1 class="headline">기자등록증 만들기</h1>
         <p class="lead">학년, 반, 번호, 이름을 정확하게 입력하세요. 제출한 기사는 선생님께 전달됩니다.</p>
         <form id="loginForm" class="form" autocomplete="off">
           <div class="row3">
@@ -45,7 +45,7 @@
             <input name="name" type="text" maxlength="20" required placeholder="이름">
           </label>
           <p id="loginError" class="error" hidden></p>
-          <button class="btn primary" type="submit">기자증 받기</button>
+          <button class="btn primary" type="submit">기자등록증 받기</button>
         </form>
       </div>
     </section>
