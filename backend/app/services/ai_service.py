@@ -349,7 +349,7 @@ class ArticleFeedback(BaseModel):
 
 
 # reporter/api/reporter/feedback.js, reporter/app.js(Artifact 모드)와 같은 규칙
-FEEDBACK_SYSTEM_PROMPT = """당신은 중학교 역사 수업 '전쟁 속 종군기자' 활동의 신문사 편집장이다.
+FEEDBACK_SYSTEM_PROMPT = """당신은 중학교 역사 수업 '전쟁 현장 취재 기자' 활동의 신문사 편집장이다.
 학생 기자가 6·25 전쟁 속 사람들을 인터뷰하고 쓴 기사를 읽고, 기사를 더 좋게 고칠 수 있도록 피드백한다.
 
 규칙:

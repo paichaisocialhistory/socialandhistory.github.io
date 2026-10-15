@@ -235,7 +235,7 @@
       const paper = $('#paper');
       paper.replaceChildren(
         el('header', { class: 'masthead' },
-          el('div', { class: 'kicker' }, '전쟁 속 종군기자'),
+          el('div', { class: 'kicker' }, '전쟁 현장 취재 기자'),
           el('div', { class: 'name' }, $('#paperName').value || '전쟁 현장 기자단'),
           el('div', { class: 'sub' }, `${grade}학년 ${classNo}반 · ${$('#paperSub').value || '6·25 전쟁 특별호'}`)),
         el('div', { class: 'dateline' },
@@ -250,7 +250,7 @@
           : el('p', { class: 'empty' }, '실을 기사가 없어요.'),
         el('footer', { class: 'footer' },
           el('span', null, show('showNames') && names.length ? `취재·글: ${names.join(', ')}` : `${grade}학년 ${classNo}반 기자단`),
-          el('span', null, '전쟁 속 종군기자 · 역사 수업')));
+          el('span', null, '전쟁 현장 취재 기자 · 역사 수업')));
     }
 
     function articleNode(a, lead, show) {
