@@ -94,6 +94,14 @@
   const questionCount = (pid) => (state.chats[pid] || []).filter((m) => m.from === 'me').length;
   const needed = (pid) => (peopleById[pid] && peopleById[pid].common ? MIN_COMMON : MIN_Q);
   const isDone = (pid) => askedCount(pid) >= needed(pid) && !!state.fact[pid];
+  // 사실 확인 문제: 한 인물에 한 문제(객체) 또는 여러 문제(배열)
+  const factList = (p) => (Array.isArray(p.factCheck) ? p.factCheck : [p.factCheck]);
+  // 저장된 사실 확인 결과 → 문제별 [맞음/틀림] (예전 형식 {choice, correct}도 읽음)
+  const factResults = (pid) => {
+    const f = state.fact[pid];
+    if (!f) return [];
+    return Array.isArray(f.results) ? f.results : [!!f.correct];
+  };
   const commonDone = () => !COMMON || isDone(COMMON.id);
   // 차례로 이어서 인터뷰하는 묶음 (data.js의 groups)
   const GROUPS = (DATA.groups || [])
@@ -304,8 +312,10 @@
     const n = askedCount(p.id);
     const need = needed(p.id);
     const f = state.fact[p.id];
+    const res = factResults(p.id);
+    const right = res.filter(Boolean).length;
     $('#ivCount').textContent = f
-      ? `취재한 주제 ${n}가지 · 사실 확인 ${f.correct ? '정답 ✔' : '완료'}`
+      ? `취재한 주제 ${n}가지 · 사실 확인 ${res.length > 1 ? `${right}/${res.length} 정답` : right ? '정답 ✔' : '완료'}`
       : n >= need ? `취재한 주제 ${n}가지 · 이제 사실 확인을 할 수 있어요` : `취재한 주제 ${n} / ${need}가지`;
     const btn = $('#factBtn');
     btn.disabled = n < need;
@@ -492,38 +502,57 @@ ${talk}
   // 사실 확인
   $('#factBtn').addEventListener('click', () => {
     const p = peopleById[state.currentPid];
-    const fc = p.factCheck;
+    const list = factList(p);
     const prev = state.fact[p.id];
-    $('#factQ').textContent = fc.q;
-    $('#factOptions').replaceChildren(...fc.options.map((o, i) =>
-      el('label', null,
-        el('input', { type: 'radio', name: 'fact', value: i, checked: prev && prev.choice === i, disabled: !!prev }),
-        el('span', null, o))));
-    const result = $('#factResult');
-    result.hidden = !prev;
-    if (prev) showFactResult(fc, prev.correct);
+    const prevChoices = prev ? (Array.isArray(prev.choices) ? prev.choices : [prev.choice]) : [];
+    $('#factQ').textContent = list.length > 1 ? `문제 ${list.length}개를 모두 풀어야 취재를 마칠 수 있어요.` : '';
+    $('#factQ').hidden = list.length < 2;
+    $('#factOptions').replaceChildren(...list.map((fc, qi) =>
+      el('fieldset', { class: 'fact-q' },
+        el('legend', null, (list.length > 1 ? `${qi + 1}. ` : '') + fc.q),
+        el('div', { class: 'options' }, ...fc.options.map((o, i) =>
+          el('label', null,
+            el('input', { type: 'radio', name: `fact-${qi}`, value: i, checked: prevChoices[qi] === i, disabled: !!prev }),
+            el('span', null, o)))),
+        el('p', { class: 'fact-result', hidden: true }))));
+    $('#factResult').hidden = true;
+    if (prev) showFactResults(list, factResults(p.id));
     $('#factSubmit').hidden = !!prev;
     $('#factDialog').showModal();
   });
 
-  function showFactResult(fc, correct) {
-    const r = $('#factResult');
-    r.className = 'fact-result ' + (correct ? 'ok' : 'no');
-    r.textContent = (correct ? '⭕ 정답입니다! ' : `❌ 아쉬워요. 정답은 "${fc.options[fc.answer]}"입니다. `) + fc.explain;
-    r.hidden = false;
+  function showFactResults(list, results) {
+    document.querySelectorAll('#factOptions .fact-q').forEach((box, qi) => {
+      const fc = list[qi];
+      const correct = !!results[qi];
+      const r = box.querySelector('.fact-result');
+      r.className = 'fact-result ' + (correct ? 'ok' : 'no');
+      r.textContent = (correct ? '⭕ 정답입니다! ' : `❌ 아쉬워요. 정답은 "${fc.options[fc.answer]}"입니다. `) + fc.explain;
+      r.hidden = false;
+    });
   }
 
   $('#factSubmit').addEventListener('click', () => {
     const p = peopleById[state.currentPid];
-    const picked = document.querySelector('#factOptions input:checked');
-    if (!picked) return;
-    const choice = Number(picked.value);
-    const correct = choice === p.factCheck.answer;
-    state.fact[p.id] = { choice, correct };
+    const list = factList(p);
+    const choices = list.map((_, qi) => {
+      const picked = document.querySelector(`#factOptions input[name="fact-${qi}"]:checked`);
+      return picked ? Number(picked.value) : null;
+    });
+    const err = $('#factResult');
+    if (choices.some((c) => c === null)) {
+      err.className = 'fact-result no';
+      err.textContent = '모든 문제의 답을 골라 주세요.';
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+    const results = choices.map((c, qi) => c === list[qi].answer);
+    state.fact[p.id] = { choices, results, correct: results.every(Boolean) };
     save();
     document.querySelectorAll('#factOptions input').forEach((i) => { i.disabled = true; });
     $('#factSubmit').hidden = true;
-    showFactResult(p.factCheck, correct);
+    showFactResults(list, results);
     state.chats[p.id].push({ from: 'system', text: p.common
       ? '공통 인터뷰를 마쳤습니다. 이제 [← 취재 목록]으로 가서 전쟁 현장의 사람들을 만나 보세요.'
       : groupEndText(p) || `${p.name} 님 취재를 마쳤습니다. 취재 목록에서 다른 사람을 만나 보세요.` });
@@ -842,8 +871,10 @@ ${article.body}
   function payload() {
     const s = state.student;
     const met = DATA.people.filter((p) => questionCount(p.id) > 0);
-    const factDone = Object.keys(state.fact).length;
-    const factRight = Object.values(state.fact).filter((f) => f.correct).length;
+    // 문제 단위로 센다 (공통 인터뷰는 2문제)
+    const allResults = Object.keys(state.fact).flatMap((pid) => factResults(pid));
+    const factDone = allResults.length;
+    const factRight = allResults.filter(Boolean).length;
     const totalQuestions = DATA.people.reduce((sum, p) => sum + questionCount(p.id), 0);
     return {
       studentId: `${s.grade}-${s.classNo}-${s.studentNo}-${s.name}`,

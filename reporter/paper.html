@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>학급 신문 만들기 · 전쟁 현장 기자단</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗞️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600;900&display=swap" rel="stylesheet">
+  <style>
+    /* 신문지 한 장: 화면에서는 종이처럼 보이고, 인쇄하면 조작 패널은 빠진다 */
+    :root {
+      --desk: #e9e4d8;
+      --paper: #fffdf8;
+      --ink: #1d1b17;
+      --ink-2: #57514a;
+      --rule: #1d1b17;
+      --hair: #c9c0ae;
+      --accent: #8f1f22;
+      --panel: #ffffff;
+      --serif: 'Noto Serif KR', 'Nanum Myeongjo', 'Batang', serif;
+      --sans: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--desk); color: var(--ink); font: 15px/1.6 var(--sans); word-break: keep-all; overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
+
+    /* 조작 패널 */
+    .panel { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+    .panel-box { background: var(--panel); border: 1px solid var(--hair); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
+    .panel h1 { margin: 0; font: 900 22px/1.3 var(--serif); }
+    .panel p { margin: 0; color: var(--ink-2); font-size: 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+    .row label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+    .row input[type=text], .row input[type=number], .row select { font: inherit; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 6px; min-width: 0; }
+    .row input[type=number] { width: 80px; }
+    .row .wide { width: min(260px, 100%); }
+    .checks { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    .checks label { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--ink); font-weight: 400; }
+    .btn { font: 700 15px var(--sans); padding: 9px 16px; border-radius: 6px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #d9a441; outline-offset: 2px; }
+    .status { font-size: 14px; padding: 8px 12px; border-radius: 6px; background: #f3efe4; }
+    .status.err { background: #f8e2e0; color: var(--accent); }
+    .pick { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pick label { display: flex; gap: 4px; align-items: center; font-size: 13px; padding: 3px 8px; border: 1px solid var(--hair); border-radius: 999px; background: #faf7f0; }
+
+    /* 신문 */
+    .sheet { max-width: 1100px; margin: 0 auto 40px; padding: 0 16px; }
+    .paper { background: var(--paper); padding: 28px 32px 36px; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+    .masthead { text-align: center; border-bottom: 4px double var(--rule); padding-bottom: 10px; }
+    .masthead .kicker { font: 700 12px var(--sans); letter-spacing: .3em; color: var(--accent); }
+    .masthead .name { font: 900 clamp(34px, 7vw, 64px)/1.1 var(--serif); letter-spacing: .04em; margin: 6px 0 2px; text-wrap: balance; }
+    .masthead .sub { font: 600 15px var(--serif); color: var(--ink-2); }
+    .dateline { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; border-bottom: 1px solid var(--rule); padding: 6px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .editorial { margin: 14px 0 6px; padding: 10px 14px; border: 1px solid var(--rule); font: 400 14px/1.7 var(--serif); }
+    .editorial b { font-family: var(--sans); }
+    .columns { column-count: 2; column-gap: 28px; column-rule: 1px solid var(--hair); margin-top: 16px; }
+    .columns.c3 { column-count: 3; column-gap: 22px; }
+    .article { padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--rule); }
+    .article:last-child { border-bottom: 0; }
+    .article .head { break-inside: avoid; break-after: avoid; }
+    .article h2 { font: 900 21px/1.35 var(--serif); margin: 0 0 4px; text-wrap: balance; }
+    .article.lead h2 { font-size: 26px; }
+    .byline { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dotted var(--hair); }
+    .byline b { color: var(--ink); }
+    .article p { margin: 0 0 8px; font: 400 14.5px/1.85 var(--serif); text-align: justify; }
+    .article > p:first-of-type::first-letter { font-weight: 900; }
+    .box { break-inside: avoid; margin: 10px 0 0; padding: 8px 10px; background: #f4efe3; border-left: 3px solid var(--accent); font-size: 13px; line-height: 1.65; }
+    .box h3 { margin: 0 0 2px; font: 700 12px var(--sans); letter-spacing: .08em; color: var(--accent); }
+    .voices { break-inside: avoid; margin-top: 8px; font-size: 12.5px; line-height: 1.6; }
+    .voices h3 { margin: 0 0 2px; font: 700 12px var(--sans); letter-spacing: .08em; color: var(--ink-2); }
+    .voices p { margin: 0 0 3px; font: 400 12.5px/1.6 var(--sans); text-align: left; }
+    .empty { text-align: center; color: var(--ink-2); padding: 40px 0; font-family: var(--serif); }
+    .footer { margin-top: 18px; border-top: 4px double var(--rule); padding-top: 6px; font-size: 12px; color: var(--ink-2); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+    .sample-mark { color: var(--accent); font-weight: 700; }
+
+    @media (max-width: 640px) {
+      .paper { padding: 18px 16px 24px; }
+      .columns, .columns.c3 { column-count: 1; }
+    }
+
+    /* 인쇄: 조작 패널을 빼고 종이 가득 */
+    @page { size: A4; margin: 12mm; }
+    @media print {
+      body { background: #fff; }
+      .panel { display: none !important; }
+      .sheet { max-width: none; margin: 0; padding: 0; }
+      .paper { box-shadow: none; padding: 0; }
+      .columns { column-count: 2; }
+      .columns.c3 { column-count: 3; }
+      .masthead .name { font-size: 48px; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+  <style id="pageSize">@page { size: A4; margin: 12mm; }</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="panel-box">
+      <h1>🗞️ 학급 신문 만들기</h1>
+      <p>학생들이 제출한 기사를 모아 신문 한 부로 만들고 인쇄합니다. 시트의 <b>반코드</b> 탭에 적은 반코드를 넣으세요. <b>공유숨김</b>을 체크한 기사는 빠지고, 댓글은 <b>선생님이 승인한 것만</b> 실립니다.</p>
+      <form id="loadForm" class="row" autocomplete="off">
+        <label>학년 <input id="grade" type="number" min="1" max="3" value="3" required></label>
+        <label>반 <input id="classNo" type="number" min="1" max="20" required></label>
+        <label>반코드 <input id="classCode" type="text" maxlength="20" required></label>
+        <button class="btn primary" type="submit">기사 불러오기</button>
+        <button id="sampleBtn" class="btn" type="button">예시로 미리 보기</button>
+      </form>
+      <p id="status" class="status" hidden></p>
+    </div>
+
+    <div id="options" class="panel-box" hidden>
+      <div class="row">
+        <label>신문 이름 <input id="paperName" class="wide" type="text" maxlength="20" value="전쟁 현장 기자단"></label>
+        <label>부제 <input id="paperSub" class="wide" type="text" maxlength="40" value="6·25 전쟁 특별호"></label>
+        <label>단 수
+          <select id="cols"><option value="2">2단</option><option value="3">3단</option></select>
+        </label>
+        <label>종이
+          <select id="size"><option value="A4">A4</option><option value="A3">A3</option></select>
+        </label>
+      </div>
+      <div class="checks">
+        <label><input id="showNames" type="checkbox" checked> 기자 이름 싣기</label>
+        <label><input id="showSources" type="checkbox" checked> 취재한 사람 싣기</label>
+        <label><input id="showLearned" type="checkbox" checked> '새로 알게 된 사실' 싣기</label>
+        <label><input id="showThink" type="checkbox"> '전쟁과 평화에 대한 생각' 싣기</label>
+        <label><input id="showComments" type="checkbox" checked> 승인된 댓글(독자 의견) 싣기</label>
+      </div>
+      <div>
+        <p style="margin-bottom:6px">실을 기사 고르기 (체크를 끄면 신문에서 빠져요)</p>
+        <div id="pick" class="pick"></div>
+      </div>
+      <div class="row">
+        <button id="printBtn" class="btn primary" type="button">🖨️ 인쇄하기</button>
+        <p>인쇄 창에서 <b>배경 그래픽</b>을 켜면 상자 색이 함께 나와요. PDF로 저장할 수도 있어요.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet">
+    <div id="paper" class="paper">
+      <p class="empty">반 정보를 넣고 <b>기사 불러오기</b>를 누르면 이곳에 신문이 만들어져요.</p>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    const SHEET_URL = ((window.REPORTER_CONFIG || {}).SHEET_URL || '').trim();
+    const $ = (s) => document.querySelector(s);
+    let articles = [];
+    let isSample = false;
+    const excluded = new Set();
+
+    function el(tag, attrs, ...kids) {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs || {})) {
+        if (k === 'class') n.className = v;
+        else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+        else if (v !== false && v != null) n.setAttribute(k, v === true ? '' : v);
+      }
+      for (const c of kids.flat()) if (c != null && c !== false) n.append(c);
+      return n;
+    }
+
+    function status(text, err) {
+      const p = $('#status');
+      p.hidden = !text;
+      p.className = 'status' + (err ? ' err' : '');
+      p.textContent = text || '';
+    }
+
+    // 미리 보기용 예시 (실제 학생 기사가 아님)
+    const SAMPLE = [
+      { id: 's1', reporter: '김하늘 기자', headline: '짐 대신 사람을 실은 배, 1만 4천 명의 크리스마스', people: '마거리트 히긴스(6), 레너드 라루(4), 현봉학(3)',
+        body: '1950년 12월, 흥남 부두는 남쪽으로 가려는 피란민으로 가득했다. 미 제10군단 민사 고문 현봉학 씨는 "군대가 떠나고 나면 이들은 보복을 당할 게 뻔하오"라며 알몬드 장군을 거듭 설득했다고 말했다.\n메러디스 빅토리호의 레너드 라루 선장은 "이 배는 손님이 고작 12명 탈 수 있는 배"라고 했다. 그 배에 약 1만 4천 명이 탔고, 사흘 뒤 크리스마스에 거제도에 닿았다. 항해 중 아기 다섯이 태어났다.',
+        learned: '흥남 철수 때 군인뿐 아니라 약 10만 명의 피란민이 배를 타고 남쪽으로 내려왔다.', think: '한 사람의 용기 있는 설득이 수많은 생명을 구할 수 있다.',
+        comments: [{ author: '이바다', text: '현봉학 씨와 선장의 이야기를 함께 써서 결정과 실행을 모두 알 수 있었어요.' }] },
+      { id: 's2', reporter: '박서준 기자', headline: '"전쟁은 왜 해야 하나요" 열여섯 학도병의 물음', people: '마거리트 히긴스(5), 이우근(4), 박완서(3)',
+        body: '1950년 8월, 포항여자중학교를 지키던 학도의용군 이우근 군은 어머니께 편지를 쓰고 있었다. 그는 "아무리 적이라도 그들도 사람이라고 생각하니 마음이 무겁다"고 말했다.\n같은 전쟁을 서울에서 겪은 대학생 박완서 씨는 "같은 동네 사람들이 편을 나눠 서로를 고발하는 걸 봤다"고 했다. 전쟁은 총을 든 사람뿐 아니라 이웃 사이의 믿음까지 무너뜨렸다.',
+        learned: '포항여중 전투에서 학도병 71명 가운데 48명이 전사했다.', think: '',
+        comments: [] },
+      { id: 's3', reporter: '최윤아 기자', headline: '하늘을 나는 고아원, 김포에서 제주로', people: '마거리트 히긴스(5), 러셀 블레이즈델(4), 정광자(3)',
+        body: '1950년 12월 20일 김포 비행장. 미 공군 군목 러셀 블레이즈델 중령은 수송기 16대에 전쟁고아 천 명 가까이를 태웠다. 그는 "전쟁은 어른들이 일으키지만 가장 큰 상처는 아이들이 입는다"고 말했다.',
+        learned: '유모차 작전으로 약 1,000명의 고아가 제주도로 옮겨졌다.', think: '',
+        comments: [] },
+    ];
+
+    async function load(e) {
+      e.preventDefault();
+      if (!SHEET_URL) { status('config.js에 SHEET_URL이 없어 기사를 불러올 수 없어요. 예시로 미리 볼 수는 있어요.', true); return; }
+      const body = { action: 'list', grade: Number($('#grade').value), classNo: Number($('#classNo').value),
+        classCode: $('#classCode').value.trim(), studentId: 'teacher', name: '선생님' };
+      status('기사를 불러오는 중…');
+      try {
+        const res = await fetch(SHEET_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (!json.success) { status(json.error || '불러오지 못했어요.', true); return; }
+        articles = json.articles || [];
+        isSample = false;
+        excluded.clear();
+        status(articles.length ? `기사 ${articles.length}편을 불러왔어요.` : '아직 제출된 기사가 없어요.');
+        render();
+      } catch (err) {
+        status('시트에 연결하지 못했어요. 인터넷 연결과 시트 주소를 확인해 주세요.', true);
+      }
+    }
+
+    function render() {
+      $('#options').hidden = false;
+      const classNo = isSample ? '○' : $('#classNo').value;
+      const grade = isSample ? '○' : $('#grade').value;
+      const show = (id) => $('#' + id).checked;
+      $('#pageSize').textContent = `@page { size: ${$('#size').value}; margin: 12mm; }`;
+
+      $('#pick').replaceChildren(...articles.map((a, i) =>
+        el('label', null, el('input', { type: 'checkbox', checked: !excluded.has(a.id), onchange: (ev) => {
+          if (ev.target.checked) excluded.delete(a.id); else excluded.add(a.id);
+          render();
+        } }), `${i + 1}. ${a.headline || '(제목 없음)'}`)));
+
+      const list = articles.filter((a) => !excluded.has(a.id));
+      const today = new Date();
+      const date = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+      const cols = $('#cols').value === '3' ? 'columns c3' : 'columns';
+      const names = list.map((a) => (a.reporter || '').replace(/ 기자$/, '')).filter(Boolean);
+
+      const paper = $('#paper');
+      paper.replaceChildren(
+        el('header', { class: 'masthead' },
+          el('div', { class: 'kicker' }, '전쟁 속 종군기자'),
+          el('div', { class: 'name' }, $('#paperName').value || '전쟁 현장 기자단'),
+          el('div', { class: 'sub' }, `${grade}학년 ${classNo}반 · ${$('#paperSub').value || '6·25 전쟁 특별호'}`)),
+        el('div', { class: 'dateline' },
+          el('span', null, `발행 ${date}`),
+          el('span', null, `기사 ${list.length}편`),
+          isSample ? el('span', { class: 'sample-mark' }, '예시 기사로 만든 미리 보기') : el('span', null, '1950 ~ 1953')),
+        el('div', { class: 'editorial' },
+          el('b', null, '이 신문은 '),
+          '우리 반 기자들이 6·25 전쟁을 겪은 사람들을 인터뷰하고 쓴 기사를 모은 것입니다. 인터뷰한 인물은 실제 기록과 구술을 바탕으로 재구성했고, 기자들은 그들의 말을 역사 자료와 맞추어 보며 "전쟁은 평범한 사람들의 삶을 어떻게 바꾸었나"를 취재했습니다.'),
+        list.length
+          ? el('div', { class: cols }, ...list.map((a, i) => articleNode(a, i === 0, show)))
+          : el('p', { class: 'empty' }, '실을 기사가 없어요.'),
+        el('footer', { class: 'footer' },
+          el('span', null, show('showNames') && names.length ? `취재·글: ${names.join(', ')}` : `${grade}학년 ${classNo}반 기자단`),
+          el('span', null, '전쟁 속 종군기자 · 역사 수업')));
+    }
+
+    function articleNode(a, lead, show) {
+      const paras = String(a.body || '').split(/\n+/).map((t) => t.trim()).filter(Boolean);
+      const people = String(a.people || '').replace(/\(\d+\)/g, '').trim();
+      const comments = (a.comments || []).filter((c) => !c.pending);
+      return el('article', { class: 'article' + (lead ? ' lead' : '') },
+        el('div', { class: 'head' },
+          el('h2', null, a.headline || '(제목 없음)'),
+          el('div', { class: 'byline' },
+            show('showNames') ? el('b', null, a.reporter || '') : el('b', null, '우리 반 기자'),
+            show('showSources') && people ? ` · 취재: ${people}` : '')),
+        ...paras.map((t) => el('p', null, t)),
+        show('showLearned') && a.learned ? el('div', { class: 'box' }, el('h3', null, '새로 알게 된 사실'), a.learned) : null,
+        show('showThink') && a.think ? el('div', { class: 'box' }, el('h3', null, '전쟁과 평화에 대한 생각'), a.think) : null,
+        show('showComments') && comments.length
+          ? el('div', { class: 'voices' }, el('h3', null, '독자 의견'),
+              ...comments.map((c) => el('p', null, `“${c.text}” `, show('showNames') ? `— ${c.author}` : '')))
+          : null);
+    }
+
+    $('#loadForm').addEventListener('submit', load);
+    $('#sampleBtn').addEventListener('click', () => {
+      articles = SAMPLE;
+      isSample = true;
+      excluded.clear();
+      status('예시 기사로 만든 미리 보기예요. 실제 학생 기사가 아닙니다.');
+      render();
+    });
+    ['paperName', 'paperSub', 'cols', 'size', 'showNames', 'showSources', 'showLearned', 'showThink', 'showComments']
+      .forEach((id) => $('#' + id).addEventListener('input', () => { if (articles.length) render(); }));
+    $('#printBtn').addEventListener('click', () => window.print());
+  })();
+  </script>
+</body>
+</html>
