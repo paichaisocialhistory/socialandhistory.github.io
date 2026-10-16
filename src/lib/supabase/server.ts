@@ -45,7 +45,35 @@ export async function isAdmin(): Promise<boolean> {
   return data === true;
 }
 
-export type AdminContext = {
-  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
-  admin: boolean;
+/** 교직원(교사·코치·관리자) 여부. 학생 계정은 false. */
+export async function isStaff(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return false;
+
+  const { data, error } = await supabase.rpc('is_staff');
+  if (error) return false;
+  return data === true;
+}
+
+export type Profile = {
+  user_id: string;
+  email: string | null;
+  role: 'student' | 'staff';
+  player_id: string | null;
 };
+
+/** 로그인한 사용자의 프로필(역할·연결된 선수). 비로그인 시 null. */
+export async function getProfile(): Promise<Profile | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return null;
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('user_id, email, role, player_id')
+    .eq('user_id', userData.user.id)
+    .maybeSingle();
+
+  return (data as Profile | null) ?? null;
+}

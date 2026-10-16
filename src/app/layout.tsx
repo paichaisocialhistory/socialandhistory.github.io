@@ -3,7 +3,7 @@ import './globals.css';
 import { SiteNav } from '@/components/site-nav';
 import { getFeatures } from '@/lib/features';
 import { isSupabaseConfigured } from '@/lib/env';
-import { getCurrentUser, isAdmin } from '@/lib/supabase/server';
+import { createSupabaseServerClient, getCurrentUser, getProfile, isAdmin, isStaff } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: {
@@ -24,11 +24,31 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   const user = configured ? await getCurrentUser() : null;
   const admin = configured && user ? await isAdmin() : false;
+  const staff = configured && user ? await isStaff() : false;
+
+  // 학생 계정이면 자기 선수 화면으로 가는 바로가기를 메뉴에 넣는다.
+  const profile = configured && user ? await getProfile() : null;
+  let studentNo: string | null = null;
+  if (profile?.player_id) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from('players')
+      .select('student_no')
+      .eq('id', profile.player_id)
+      .maybeSingle();
+    studentNo = (data as { student_no: string | null } | null)?.student_no ?? null;
+  }
 
   return (
     <html lang="ko">
       <body className="min-h-dvh antialiased">
-        <SiteNav features={features} isAdmin={admin} userEmail={user?.email ?? null} />
+        <SiteNav
+          features={features}
+          isAdmin={admin}
+          isStaff={staff}
+          studentNo={studentNo}
+          userEmail={user?.email ?? null}
+        />
 
         <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
           {configured ? (

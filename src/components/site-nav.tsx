@@ -5,10 +5,13 @@ import type { Features } from '@/lib/features';
 export type NavProps = {
   features: Features;
   isAdmin: boolean;
+  isStaff: boolean;
+  /** 로그인한 학생 계정에 연결된 선수의 학번. 없으면 null. */
+  studentNo: string | null;
   userEmail: string | null;
 };
 
-function buildLinks({ features, isAdmin }: NavProps) {
+function buildLinks({ features, isAdmin, isStaff, studentNo }: NavProps) {
   const links: { href: string; label: string }[] = [
     { href: '/', label: '홈' },
     { href: '/teams', label: '팀' },
@@ -22,12 +25,17 @@ function buildLinks({ features, isAdmin }: NavProps) {
 
   links.push({ href: '/register', label: '선수 등록 신청' });
 
-  if (features.videos && isAdmin) {
+  // 학생은 자기 화면에서 장면을 보므로 영상 목록 대신 내 기록으로 보낸다.
+  if (features.videos && isStaff) {
     links.push({ href: '/videos', label: '영상' });
+  }
+  if (studentNo) {
+    links.push({ href: `/players/${studentNo}`, label: '내 기록' });
   }
 
   if (isAdmin) {
     links.push({ href: '/admin/players', label: '승인 대기' });
+    links.push({ href: '/admin/accounts', label: '계정 관리' });
     if (features.playerAbilities) {
       links.push({ href: '/admin/abilities', label: '능력치 승인' });
     }
@@ -47,8 +55,8 @@ export function SiteNav(props: NavProps) {
       </button>
     </form>
   ) : (
-    <Link href="/admin/login" className="btn-secondary !px-2.5 !py-1 !text-xs">
-      관리자 로그인
+    <Link href="/login" className="btn-secondary !px-2.5 !py-1 !text-xs">
+      로그인
     </Link>
   );
 

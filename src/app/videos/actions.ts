@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient, getCurrentUser, isAdmin } from '@/lib/supabase/server';
 import { describeError, fail, ok, text, type ActionState } from '@/lib/action-result';
 import { getFeatures } from '@/lib/features';
-import { isDriveUrl, extractDriveFileId } from '@/lib/drive';
+import { parseVideoSource } from '@/lib/video-source';
 import { parseTimestamp } from '@/lib/format';
 
 export async function createVideo(formData: FormData): Promise<ActionState> {
@@ -12,12 +12,13 @@ export async function createVideo(formData: FormData): Promise<ActionState> {
   if (!(await isAdmin())) return fail('관리자만 영상을 등록할 수 있습니다.');
 
   const sourceUrl = text(formData, 'source_url');
-  if (!sourceUrl) return fail('구글 드라이브 공유 링크를 입력하세요.');
-  if (!isDriveUrl(sourceUrl)) {
-    return fail('학교 구글 드라이브(drive.google.com / docs.google.com) 링크만 등록할 수 있습니다.');
-  }
-  if (!extractDriveFileId(sourceUrl)) {
-    return fail('링크에서 파일 ID를 찾지 못했습니다. "링크 복사"로 얻은 공유 링크를 붙여넣으세요.');
+  if (!sourceUrl) return fail('영상 링크를 입력하세요.');
+
+  const source = parseVideoSource(sourceUrl);
+  if (!source) {
+    return fail(
+      'YouTube 또는 학교 구글 드라이브 링크만 등록할 수 있습니다. 주소를 다시 확인하세요.',
+    );
   }
 
   const supabase = await createSupabaseServerClient();

@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createSupabaseServerClient, getCurrentUser, isAdmin } from '@/lib/supabase/server';
+import { createSupabaseServerClient, getCurrentUser, isAdmin, isStaff } from '@/lib/supabase/server';
 import { Alert, Card, EmptyState, PageHeader, StatusBadge } from '@/components/ui';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/submit-button';
 import { AbilityBars } from '@/components/ability-bars';
+import { VideoPlayer, type Cue } from '@/components/video-player';
+import { parseVideoSource } from '@/lib/video-source';
 import { getFeatures } from '@/lib/features';
-import { formatDateTime, formatTimestamp } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import {
   ABILITY_KEYS,
   ABILITY_LABEL,
@@ -36,6 +38,7 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
   const features = getFeatures();
   const admin = await isAdmin();
   const user = await getCurrentUser();
+  const staff = user ? await isStaff() : false;
 
   if (!features.publicPlayerDirectory && !admin) notFound();
 
@@ -56,7 +59,7 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
     ? await Promise.all([
         supabase.from('player_abilities').select('*').eq('player_id', player.id).maybeSingle(),
         supabase.from('player_season_stats').select('*').eq('player_id', player.id).maybeSingle(),
-        user
+        staff
           ? supabase
               .from('ability_change_requests')
               .select('*')
@@ -71,21 +74,49 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
   const stats = statsResult.data as PlayerSeasonStats | null;
   const requests = (requestsResult.data as AbilityChangeRequest[] | null) ?? [];
 
-  // 3단계: 이 선수가 태그된 영상과 분석 메모 (교직원 로그인 시에만 조회 가능)
+  // 3단계: 이 선수가 태그된 영상과 분석 메모.
+  // RLS 가 학생에게는 본인 메모만 돌려주므로, 다른 학생의 화면에서는 비어 있다.
   const videoData =
     features.videos && user
       ? await supabase
           .from('video_annotations')
-          .select('id, timestamp_seconds, note, created_by, video_id, videos(id, title)')
+          .select('id, timestamp_seconds, note, created_by, video_id, videos(id, title, source_url)')
           .eq('player_id', player.id)
-          .order('created_at', { ascending: false })
-          .limit(20)
+          .order('timestamp_seconds')
       : { data: null };
 
-  const annotations =
-    (videoData.data as
-      | { id: string; timestamp_seconds: number; note: string | null; created_by: string | null; video_id: string; videos: { id: string; title: string | null } | null }[]
-      | null) ?? [];
+  type AnnotationRow = {
+    id: string;
+    timestamp_seconds: number;
+    note: string | null;
+    created_by: string | null;
+    video_id: string;
+    videos: { id: string; title: string | null; source_url: string } | null;
+  };
+
+  const annotations = (videoData.data as AnnotationRow[] | null) ?? [];
+
+  // 영상별로 묶는다. 첫 영상은 화면에 바로 띄우고 나머지는 링크로 안내한다.
+  const byVideo = new Map<string, { title: string; sourceUrl: string; cues: Cue[] }>();
+  for (const annotation of annotations) {
+    if (!annotation.videos) continue;
+    const entry = byVideo.get(annotation.video_id) ?? {
+      title: annotation.videos.title || '제목 없는 영상',
+      sourceUrl: annotation.videos.source_url,
+      cues: [],
+    };
+    entry.cues.push({
+      id: annotation.id,
+      seconds: annotation.timestamp_seconds,
+      note: annotation.note ?? '(메모 없음)',
+      byline: annotation.created_by,
+    });
+    byVideo.set(annotation.video_id, entry);
+  }
+
+  const videoGroups = [...byVideo.entries()];
+  const [featuredId, featured] = videoGroups[0] ?? [];
+  const featuredSource = featured ? parseVideoSource(featured.sourceUrl) : null;
 
   const teamList = (teams as Pick<Team, 'id' | 'name'>[] | null) ?? [];
 
@@ -196,29 +227,44 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
             </Card>
           ) : null}
 
-          {features.playerAbilities && features.videos && user ? (
-            <Card title="분석 메모" description="영상에 남긴 이 선수 관련 타임스탬프 메모입니다.">
-              {annotations.length === 0 ? (
-                <EmptyState>이 선수에 연결된 분석 메모가 없습니다.</EmptyState>
+          {features.videos && user ? (
+            <Card
+              title="경기 장면"
+              description="메모를 누르면 영상이 그 장면부터 재생됩니다."
+            >
+              {!featured || !featuredSource ? (
+                <EmptyState>
+                  {staff
+                    ? '이 선수에 연결된 분석 메모가 없습니다.'
+                    : '아직 회원님과 관련된 장면이 등록되지 않았습니다.'}
+                </EmptyState>
               ) : (
-                <ul className="space-y-2">
-                  {annotations.map((annotation) => (
-                    <li key={annotation.id} className="flex gap-3 text-sm">
-                      <Link
-                        href={`/videos/${annotation.video_id}?t=${annotation.timestamp_seconds}`}
-                        className="shrink-0 font-mono text-xs tabular-nums underline underline-offset-2"
-                      >
-                        {formatTimestamp(annotation.timestamp_seconds)}
-                      </Link>
-                      <span>
-                        {annotation.note ?? '(메모 없음)'}
-                        <span className="muted ml-2 text-xs">
-                          {annotation.videos?.title ?? '영상'}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <p className="mb-3 text-sm font-medium">{featured.title}</p>
+                  <VideoPlayer
+                    source={featuredSource}
+                    title={featured.title}
+                    cues={featured.cues}
+                  />
+
+                  {videoGroups.length > 1 ? (
+                    <div className="mt-4 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+                      <p className="muted mb-2 text-xs font-semibold">다른 영상</p>
+                      <ul className="space-y-1">
+                        {videoGroups
+                          .filter(([id]) => id !== featuredId)
+                          .map(([id, group]) => (
+                            <li key={id} className="text-sm">
+                              <Link href={`/videos/${id}`} className="underline underline-offset-2">
+                                {group.title}
+                              </Link>
+                              <span className="muted ml-2 text-xs">장면 {group.cues.length}개</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
               )}
             </Card>
           ) : null}
@@ -298,7 +344,7 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
               </Card>
             ) : null}
 
-            {user ? (
+            {staff ? (
               <Card title="능력치 변경 제안" description="제안은 관리자 승인 후에만 반영됩니다.">
                 <ActionForm action={requestAbilityChange} className="space-y-3">
                   <input type="hidden" name="id" value={player.id} />
@@ -343,7 +389,7 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
               </Card>
             ) : (
               <Alert kind="info">
-                능력치를 제안하려면 교사 계정으로 로그인하세요.
+                능력치 제안은 교직원 계정만 할 수 있습니다.
               </Alert>
             )}
           </div>

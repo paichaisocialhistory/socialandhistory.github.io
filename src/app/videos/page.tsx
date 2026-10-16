@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createSupabaseServerClient, getCurrentUser, isAdmin } from '@/lib/supabase/server';
+import { createSupabaseServerClient, getCurrentUser, isAdmin, isStaff } from '@/lib/supabase/server';
 import { Alert, Card, EmptyState, PageHeader } from '@/components/ui';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/submit-button';
@@ -16,13 +16,20 @@ export default async function VideosPage() {
   if (!getFeatures().videos) notFound();
 
   const user = await getCurrentUser();
-  if (!user) {
+  const staff = user ? await isStaff() : false;
+
+  // 영상 목록 전체는 교직원만 본다. 학생은 자기 선수 화면에서 관련 장면만 본다.
+  if (!user || !staff) {
     return (
       <>
         <PageHeader title="영상" />
         <Alert kind="info">
-          영상에는 학생의 얼굴이 포함될 수 있어 교직원 로그인 후에만 볼 수 있습니다.{' '}
-          <Link href="/admin/login" className="underline">로그인</Link>
+          영상 목록은 교직원만 볼 수 있습니다.{' '}
+          {user ? (
+            <>학생은 <Link href="/players" className="underline">내 기록</Link>에서 본인 장면을 볼 수 있습니다.</>
+          ) : (
+            <Link href="/login" className="underline">로그인</Link>
+          )}
         </Alert>
       </>
     );
@@ -46,7 +53,7 @@ export default async function VideosPage() {
     <>
       <PageHeader
         title="경기 영상"
-        description="파일은 저장하지 않습니다. 학교 구글 드라이브에 올린 뒤 공유 링크만 등록하세요."
+        description="영상 파일은 저장하지 않고 링크만 등록합니다. YouTube 일부공개를 권장합니다."
       />
 
       {error ? <Alert kind="error">영상을 불러오지 못했습니다: {error.message}</Alert> : null}
@@ -56,7 +63,7 @@ export default async function VideosPage() {
           <ActionForm action={createVideo} className="grid gap-3 sm:grid-cols-2" resetOnSuccess>
             <div className="sm:col-span-2">
               <label className="label" htmlFor="source_url">
-                구글 드라이브 공유 링크 <span className="text-red-600">*</span>
+                영상 링크 <span className="text-red-600">*</span>
               </label>
               <input
                 id="source_url"
@@ -64,11 +71,11 @@ export default async function VideosPage() {
                 type="url"
                 className="field"
                 required
-                placeholder="https://drive.google.com/file/d/.../view"
+                placeholder="https://www.youtube.com/watch?v=..."
               />
               <p className="muted mt-1 text-xs">
-                드라이브에서 공유 범위를 <strong>교내 도메인 한정</strong>으로 설정한 뒤 링크를
-                붙여넣으세요.
+                <strong>YouTube 일부공개</strong> 링크를 권장합니다. 장면 바로가기가 동작합니다.
+                구글 드라이브 링크도 등록할 수 있지만 시점 이동은 되지 않습니다.
               </p>
             </div>
 
