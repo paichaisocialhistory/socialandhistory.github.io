@@ -6,6 +6,7 @@ import { describeError, fail, ok, text, type ActionState } from '@/lib/action-re
 import { parsePitchPoint } from '@/lib/pitch';
 import { getFeatures } from '@/lib/features';
 import { parseVideoSource } from '@/lib/video-source';
+import { parseOffset } from '@/lib/sync';
 import { parseTimestamp } from '@/lib/format';
 
 export async function createVideo(formData: FormData): Promise<ActionState> {
@@ -22,12 +23,20 @@ export async function createVideo(formData: FormData): Promise<ActionState> {
     );
   }
 
+  // 여러 카메라를 쓸 때만 의미가 있다. 비워 두면 0.
+  const rawOffset = text(formData, 'sync_offset');
+  const offset = rawOffset === null ? 0 : parseOffset(rawOffset);
+  if (offset === null) {
+    return fail('킥오프 위치는 "2:00" 또는 초 단위 숫자로 입력하세요.');
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from('videos').insert({
     title: text(formData, 'title'),
     source_url: sourceUrl,
     match_id: text(formData, 'match_id'),
     team_id: text(formData, 'team_id'),
+    sync_offset_seconds: offset,
   });
 
   if (error) return fail(describeError(error));
@@ -104,4 +113,31 @@ export async function deleteAnnotation(formData: FormData): Promise<ActionState>
 
   if (videoId) revalidatePath(`/videos/${videoId}`);
   return ok('메모를 삭제했습니다.');
+}
+
+/** 영상의 킥오프 위치를 고친다. 카메라 여러 대의 시간을 맞출 때 쓴다. */
+export async function updateSyncOffset(formData: FormData): Promise<ActionState> {
+  if (!getFeatures().videos) return fail('사용할 수 없는 기능입니다.');
+  if (!(await isAdmin())) return fail('관리자만 수정할 수 있습니다.');
+
+  const id = text(formData, 'id');
+  if (!id) return fail('영상을 찾을 수 없습니다.');
+
+  const raw = text(formData, 'sync_offset');
+  const offset = raw === null ? 0 : parseOffset(raw);
+  if (offset === null) {
+    return fail('킥오프 위치는 "2:00" 또는 초 단위 숫자로 입력하세요.');
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from('videos')
+    .update({ sync_offset_seconds: offset })
+    .eq('id', id);
+  if (error) return fail(describeError(error));
+
+  revalidatePath(`/videos/${id}`);
+  revalidatePath('/videos');
+  revalidatePath('/players');
+  return ok('킥오프 위치를 저장했습니다. 다른 카메라와 시간이 맞춰집니다.');
 }

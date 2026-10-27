@@ -107,6 +107,21 @@ export default async function VideosPage() {
               </select>
             </div>
 
+            <div>
+              <label className="label" htmlFor="sync_offset">킥오프 위치</label>
+              <input
+                id="sync_offset"
+                name="sync_offset"
+                className="field"
+                placeholder="2:00"
+                pattern="-?[0-9:]+"
+              />
+              <p className="muted mt-1 text-xs">
+                영상에서 경기가 시작되는 지점. 카메라를 두 대 이상 쓸 때 같은 장면을
+                오갈 수 있게 해 줍니다. 한 대만 쓰면 비워 두세요.
+              </p>
+            </div>
+
             <div className="flex items-end">
               <SubmitButton pendingLabel="등록 중…">영상 등록</SubmitButton>
             </div>

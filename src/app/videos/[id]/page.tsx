@@ -10,8 +10,9 @@ import { PitchPositionField } from '@/components/pitch-position-field';
 import { getFeatures } from '@/lib/features';
 import { parseVideoSource, VIDEO_SOURCE_LABEL } from '@/lib/video-source';
 import { formatTimestamp } from '@/lib/format';
+import { formatMatchTime, toMatchTime, translateBetweenVideos } from '@/lib/sync';
 import type { Player, Video, VideoAnnotation } from '@/lib/types';
-import { addAnnotation, deleteAnnotation } from '../actions';
+import { addAnnotation, deleteAnnotation, updateSyncOffset } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,18 @@ export default async function VideoDetailPage({
   const annotations = (annotationRows as VideoAnnotation[] | null) ?? [];
   const players = (playerRows as Pick<Player, 'id' | 'name' | 'student_no'>[] | null) ?? [];
   const playerName = new Map(players.map((player) => [player.id, player.name]));
+
+  // 같은 경기를 찍은 다른 카메라 영상 — 장면을 서로 오갈 수 있게 한다.
+  const { data: siblingRows } = video.match_id
+    ? await supabase
+        .from('videos')
+        .select('id, title, sync_offset_seconds')
+        .eq('match_id', video.match_id)
+        .neq('id', video.id)
+    : { data: null };
+
+  const siblings =
+    (siblingRows as { id: string; title: string | null; sync_offset_seconds: number }[] | null) ?? [];
 
   const source = parseVideoSource(video.source_url);
   const startAt = t && /^\d+$/.test(t) ? Number(t) : 0;
@@ -117,6 +130,37 @@ export default async function VideoDetailPage({
           </Alert>
         )}
       </Card>
+
+      {admin ? (
+        <Card
+          title="카메라 시간 맞추기"
+          description="영상에서 경기가 시작되는 지점입니다. 같은 경기의 다른 카메라와 장면을 맞출 때 씁니다."
+          className="mb-5"
+        >
+          <ActionForm action={updateSyncOffset} className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="id" value={video.id} />
+            <div>
+              <label className="label" htmlFor="sync_offset">킥오프 위치</label>
+              <input
+                id="sync_offset"
+                name="sync_offset"
+                className="field !w-32"
+                defaultValue={formatTimestamp(Math.abs(video.sync_offset_seconds)).replace(/^00:/, '')}
+                pattern="-?[0-9:]+"
+              />
+            </div>
+            <SubmitButton className="btn-secondary" pendingLabel="저장 중…">저장</SubmitButton>
+
+            <p className="muted w-full text-xs leading-relaxed">
+              킥오프 <strong>전</strong>부터 녹화했으면 양수(예: 2:00), 킥오프 <strong>뒤</strong>에
+              시작했으면 음수(예: -0:30)로 적습니다.
+              {siblings.length > 0
+                ? ` 같은 경기 영상 ${siblings.length}개와 연결됩니다.`
+                : ' 같은 경기로 묶인 다른 영상이 아직 없습니다.'}
+            </p>
+          </ActionForm>
+        </Card>
+      ) : null}
 
       {staff ? (
         <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
@@ -187,9 +231,34 @@ export default async function VideoDetailPage({
                     <div className="min-w-0 flex-1">
                       <p>{annotation.note}</p>
                       <p className="muted mt-0.5 text-xs">
+                        {formatMatchTime(
+                          toMatchTime(annotation.timestamp_seconds, video.sync_offset_seconds),
+                        )}
+                        {' · '}
                         {annotation.player_id ? `${playerName.get(annotation.player_id) ?? '선수'} · ` : '선수 미지정 · '}
                         {annotation.created_by ?? '알 수 없음'}
                       </p>
+                      {siblings.length > 0 ? (
+                        <p className="mt-1 flex flex-wrap gap-2 text-xs">
+                          {siblings.map((sibling) => {
+                            const at = translateBetweenVideos(
+                              annotation.timestamp_seconds,
+                              video.sync_offset_seconds,
+                              sibling.sync_offset_seconds,
+                            );
+                            if (at === null) return null;
+                            return (
+                              <Link
+                                key={sibling.id}
+                                href={`/videos/${sibling.id}?t=${Math.round(at)}`}
+                                className="underline underline-offset-2"
+                              >
+                                {sibling.title || '다른 카메라'}에서 보기
+                              </Link>
+                            );
+                          })}
+                        </p>
+                      ) : null}
                     </div>
                     {admin ? (
                       <ActionForm action={deleteAnnotation}>

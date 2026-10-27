@@ -91,6 +91,8 @@ export type Video = {
   team_id: string | null;
   player_id: string | null;
   created_at: string;
+  /** 킥오프 순간의 이 영상 재생 위치(초). 여러 카메라 시간 맞추기에 쓴다. */
+  sync_offset_seconds: number;
 };
 
 export type VideoAnnotation = {
