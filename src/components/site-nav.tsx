@@ -23,7 +23,10 @@ function buildLinks({ features, isAdmin, isStaff, studentNo }: NavProps) {
     links.push({ href: '/players', label: '선수' });
   }
 
-  links.push({ href: '/register', label: '선수 등록 신청' });
+  // 선수 등록은 교직원만 한다. 열람은 로그인 없이 누구나 가능하다.
+  if (isStaff) {
+    links.push({ href: '/register', label: '선수 등록' });
+  }
 
   // 학생은 자기 화면에서 장면을 보므로 영상 목록 대신 내 기록으로 보낸다.
   if (features.videos && isStaff) {

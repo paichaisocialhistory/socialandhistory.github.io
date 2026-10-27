@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, getCurrentUser, isStaff } from '@/lib/supabase/server';
 import { Card, EmptyState, PageHeader, Stat } from '@/components/ui';
 import { calculateStandings } from '@/lib/standings';
 import { formatDate } from '@/lib/format';
@@ -10,6 +10,10 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
   const today = new Date().toISOString().slice(0, 10);
+
+  // 열람은 로그인 없이 되지만, 등록 버튼은 교직원에게만 보인다.
+  const user = await getCurrentUser();
+  const staff = user ? await isStaff() : false;
 
   const [{ data: teamRows }, { data: matchRows }, { count: playerCount }] = await Promise.all([
     supabase.from('teams').select('*').order('name'),
@@ -36,9 +40,15 @@ export default async function HomePage() {
         title="교내 축구리그"
         description="팀 현황과 다가오는 경기를 한눈에 확인하세요."
         action={
-          <Link href="/register" className="btn-primary">
-            선수 등록 신청
-          </Link>
+          staff ? (
+            <Link href="/register" className="btn-primary">
+              선수 등록
+            </Link>
+          ) : (
+            <Link href="/standings" className="btn-secondary">
+              순위표 보기
+            </Link>
+          )
         }
       />
 
