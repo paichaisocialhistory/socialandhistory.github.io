@@ -21,7 +21,14 @@ type ProfileRow = {
   created_at: string;
 };
 
-export default async function AdminAccountsPage() {
+type SearchParams = Promise<{ grade?: string }>;
+
+export default async function AdminAccountsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const { grade: gradeFilter } = await searchParams;
   const user = await getCurrentUser();
   const admin = await isAdmin();
 
@@ -45,22 +52,28 @@ export default async function AdminAccountsPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('players')
-      .select('id, name, student_no')
+      .select('id, name, student_no, grade')
       .eq('status', 'approved')
       .order('student_no'),
   ]);
 
   const profiles = (profileRows as ProfileRow[] | null) ?? [];
-  const players = (playerRows as Pick<Player, 'id' | 'name' | 'student_no'>[] | null) ?? [];
+  const players = (playerRows as Pick<Player, 'id' | 'name' | 'student_no' | 'grade'>[] | null) ?? [];
 
   const staff = profiles.filter((p) => p.role === 'staff');
   const students = profiles.filter((p) => p.role === 'student');
 
   // 아직 계정이 없는 승인 선수만 발급 대상으로 보여 준다.
   const linkedPlayerIds = new Set(profiles.map((p) => p.player_id).filter(Boolean));
-  const playersWithoutAccount = players.filter(
+  const unlinked = players.filter(
     (player) => player.student_no && !linkedPlayerIds.has(player.id),
   );
+
+  // 올해는 3학년만 발급하는 식으로, 학년을 좁혀 한꺼번에 처리한다.
+  const grades = [...new Set(unlinked.map((p) => p.grade).filter(Boolean))].sort();
+  const playersWithoutAccount = gradeFilter
+    ? unlinked.filter((player) => player.grade === gradeFilter)
+    : unlinked;
 
   return (
     <>
@@ -83,6 +96,23 @@ export default async function AdminAccountsPage() {
               실제 메일 주소가 아니며 메일은 발송되지 않습니다. 학생에게는 <strong>학번</strong>만
               알려 주면 됩니다.
             </p>
+            <form className="mb-3 flex flex-wrap items-end gap-2">
+              <div>
+                <label className="label !text-xs" htmlFor="grade">학년으로 좁히기</label>
+                <select id="grade" name="grade" className="field !w-32 !py-1.5 !text-xs" defaultValue={gradeFilter ?? ''}>
+                  <option value="">전체 학년</option>
+                  {grades.map((g) => (
+                    <option key={g as string} value={g as string}>{g}학년</option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="btn-secondary !px-2.5 !py-1 !text-xs">적용</button>
+              <span className="muted pb-1 text-xs">
+                계정 없는 선수 {playersWithoutAccount.length}명
+                {gradeFilter ? ` (전체 ${unlinked.length}명 중)` : ''}
+              </span>
+            </form>
+
             <IssueAccountsForm players={playersWithoutAccount} action={issueStudentAccounts} />
           </>
         ) : (

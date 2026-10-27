@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SiteNav } from '@/components/site-nav';
+import { PasswordSetupGate } from '@/components/password-setup-gate';
 import { getFeatures } from '@/lib/features';
 import { isSupabaseConfigured } from '@/lib/env';
 import { createSupabaseServerClient, getCurrentUser, getProfile, isAdmin, isStaff } from '@/lib/supabase/server';
@@ -48,11 +49,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           isStaff={staff}
           studentNo={studentNo}
           userEmail={user?.email ?? null}
+          minimal={profile?.must_set_password ?? false}
         />
 
         <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
           {configured ? (
-            children
+            // 임시 비밀번호 상태면 비밀번호를 정하기 전까지 다른 화면을 쓸 수 없다.
+            profile?.must_set_password ? (
+              <PasswordSetupGate loginId={user?.email ?? null} />
+            ) : (
+              children
+            )
           ) : (
             <div className="surface p-6">
               <h1 className="text-xl font-bold">환경변수 설정이 필요합니다</h1>

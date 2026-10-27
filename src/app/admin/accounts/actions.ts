@@ -126,7 +126,8 @@ export async function issueStudentAccounts(formData: FormData): Promise<IssueRes
     // 트리거가 만든 프로필에 선수를 연결한다. 역할은 학생 그대로 둔다.
     const { error: linkError } = await admin
       .from('profiles')
-      .update({ player_id: player.id, role: 'student' })
+      // 임시 비밀번호 상태로 둔다. 학생이 첫 로그인에서 직접 정한다.
+      .update({ player_id: player.id, role: 'student', must_set_password: true })
       .eq('user_id', created.user.id);
 
     if (linkError) {
@@ -165,6 +166,9 @@ export async function resetStudentPassword(formData: FormData): Promise<IssueRes
 
   const { data: updated, error } = await admin.auth.admin.updateUserById(userId, { password });
   if (error || !updated.user) return { error: error?.message ?? '재설정에 실패했습니다.' };
+
+  // 재설정한 비밀번호도 임시다. 학생이 다시 정해야 한다.
+  await admin.from('profiles').update({ must_set_password: true }).eq('user_id', userId);
 
   const { data: profile } = await admin
     .from('profiles')

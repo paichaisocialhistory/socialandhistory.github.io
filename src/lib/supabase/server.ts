@@ -61,6 +61,8 @@ export type Profile = {
   email: string | null;
   role: 'student' | 'staff';
   player_id: string | null;
+  /** 임시 비밀번호 상태. true 면 본인이 새 비밀번호를 정해야 한다. */
+  must_set_password: boolean;
 };
 
 /** 로그인한 사용자의 프로필(역할·연결된 선수). 비로그인 시 null. */
@@ -71,7 +73,7 @@ export async function getProfile(): Promise<Profile | null> {
 
   const { data } = await supabase
     .from('profiles')
-    .select('user_id, email, role, player_id')
+    .select('user_id, email, role, player_id, must_set_password')
     .eq('user_id', userData.user.id)
     .maybeSingle();
 

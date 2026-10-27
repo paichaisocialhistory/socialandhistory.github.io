@@ -9,6 +9,8 @@ export type NavProps = {
   /** 로그인한 학생 계정에 연결된 선수의 학번. 없으면 null. */
   studentNo: string | null;
   userEmail: string | null;
+  /** 비밀번호 설정이 끝날 때까지는 메뉴를 감춘다. */
+  minimal?: boolean;
 };
 
 function buildLinks({ features, isAdmin, isStaff, studentNo }: NavProps) {
@@ -48,7 +50,7 @@ function buildLinks({ features, isAdmin, isStaff, studentNo }: NavProps) {
 }
 
 export function SiteNav(props: NavProps) {
-  const links = buildLinks(props);
+  const links = props.minimal ? [] : buildLinks(props);
 
   const accountArea = props.userEmail ? (
     <form action={signOut} className="flex items-center gap-2">
