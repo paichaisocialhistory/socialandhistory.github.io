@@ -5,6 +5,8 @@ import { Alert, Card, PageHeader } from '@/components/ui';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/submit-button';
 import { VideoPlayer, type Cue } from '@/components/video-player';
+import { PitchBoard, type PitchMarker } from '@/components/pitch-board';
+import { PitchPositionField } from '@/components/pitch-position-field';
 import { getFeatures } from '@/lib/features';
 import { parseVideoSource, VIDEO_SOURCE_LABEL } from '@/lib/video-source';
 import { formatTimestamp } from '@/lib/format';
@@ -60,6 +62,18 @@ export default async function VideoDetailPage({
 
   const source = parseVideoSource(video.source_url);
   const startAt = t && /^\d+$/.test(t) ? Number(t) : 0;
+
+  // 위치를 찍어 둔 메모만 전술판에 올린다.
+  const pitchMarkers: PitchMarker[] = annotations
+    .filter((a) => a.pitch_x !== null && a.pitch_y !== null)
+    .map((a) => ({
+      id: a.id,
+      x: Number(a.pitch_x),
+      y: Number(a.pitch_y),
+      note: a.note ?? '(메모 없음)',
+      seconds: a.timestamp_seconds,
+      byline: a.player_id ? (playerName.get(a.player_id) ?? null) : null,
+    }));
 
   const cues: Cue[] = annotations.map((annotation) => ({
     id: annotation.id,
@@ -133,6 +147,8 @@ export default async function VideoDetailPage({
                 <textarea id="note" name="note" rows={3} className="field" required maxLength={300} />
               </div>
 
+              <PitchPositionField />
+
               <p className="muted text-xs leading-relaxed">
                 선수를 지정하면 그 학생이 로그인했을 때 자기 화면에서 이 장면을 볼 수 있습니다.
                 지정하지 않은 메모는 교직원에게만 보입니다.
@@ -140,6 +156,22 @@ export default async function VideoDetailPage({
 
               <SubmitButton pendingLabel="저장 중…">메모 저장</SubmitButton>
             </ActionForm>
+          </Card>
+
+          <Card
+            title="위치 분포"
+            description="위치를 찍은 메모만 표시됩니다. 점을 가리키면 내용이 보입니다."
+          >
+            {pitchMarkers.length === 0 ? (
+              <p className="muted py-6 text-center text-sm">
+                아직 위치를 찍은 메모가 없습니다.
+              </p>
+            ) : (
+              <PitchBoard
+                markers={pitchMarkers}
+                caption={`${pitchMarkers.length}개 지점 · 아래 목록이 같은 내용의 표입니다.`}
+              />
+            )}
           </Card>
 
           <Card title={`메모 목록 ${annotations.length}건`}>

@@ -32,6 +32,27 @@
   }
 }
 
+/* 시각화 토큰 — 경기장 선은 배경, 데이터 점만 전면에 */
+:root {
+  --pitch-surface: #fcfcfb;
+  --pitch-line: #d6d8dc;
+  --viz-mark: #2a78d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --pitch-surface: #1a1a19;
+    --pitch-line: #3a3f47;
+    --viz-mark: #3987e5;
+  }
+}
+
+:root[data-theme='dark'] {
+  --pitch-surface: #1a1a19;
+  --pitch-line: #3a3f47;
+  --viz-mark: #3987e5;
+}
+
 html {
   color-scheme: light dark;
 }

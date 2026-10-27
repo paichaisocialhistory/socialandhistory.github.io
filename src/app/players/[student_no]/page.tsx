@@ -7,6 +7,8 @@ import { SubmitButton } from '@/components/submit-button';
 import { AbilityBars } from '@/components/ability-bars';
 import { VideoPlayer, type Cue } from '@/components/video-player';
 import { parseVideoSource } from '@/lib/video-source';
+import { PitchBoard, type PitchMarker } from '@/components/pitch-board';
+import { thirdOf } from '@/lib/pitch';
 import { getFeatures } from '@/lib/features';
 import { formatDateTime } from '@/lib/format';
 import {
@@ -80,7 +82,7 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
     features.videos && user
       ? await supabase
           .from('video_annotations')
-          .select('id, timestamp_seconds, note, created_by, video_id, videos(id, title, source_url)')
+          .select('id, timestamp_seconds, note, created_by, video_id, pitch_x, pitch_y, videos(id, title, source_url)')
           .eq('player_id', player.id)
           .order('timestamp_seconds')
       : { data: null };
@@ -91,6 +93,8 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
     note: string | null;
     created_by: string | null;
     video_id: string;
+    pitch_x: number | null;
+    pitch_y: number | null;
     videos: { id: string; title: string | null; source_url: string } | null;
   };
 
@@ -113,6 +117,22 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
     });
     byVideo.set(annotation.video_id, entry);
   }
+
+  // 이 선수의 활동 위치. 영상이 여러 개여도 한 장의 전술판에 모은다.
+  const pitchMarkers: PitchMarker[] = annotations
+    .filter((a) => a.pitch_x !== null && a.pitch_y !== null)
+    .map((a) => ({
+      id: a.id,
+      x: Number(a.pitch_x),
+      y: Number(a.pitch_y),
+      note: a.note ?? '(메모 없음)',
+      seconds: a.timestamp_seconds,
+      byline: a.videos?.title ?? null,
+    }));
+
+  // 수비/중원/공격 구역별 건수 — 전술판 옆에 두는 요약.
+  const thirds = { '수비 진영': 0, 중원: 0, '공격 진영': 0 } as Record<string, number>;
+  for (const marker of pitchMarkers) thirds[thirdOf(marker)] += 1;
 
   const videoGroups = [...byVideo.entries()];
   const [featuredId, featured] = videoGroups[0] ?? [];
@@ -224,6 +244,21 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
 
                 <SubmitButton pendingLabel="저장 중…">저장</SubmitButton>
               </ActionForm>
+            </Card>
+          ) : null}
+
+          {features.videos && user && pitchMarkers.length > 0 ? (
+            <Card title="활동 위치" description="선생님이 메모를 남긴 지점입니다.">
+              <PitchBoard markers={pitchMarkers} />
+
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                {Object.entries(thirds).map(([zone, count]) => (
+                  <div key={zone}>
+                    <dt className="muted text-xs">{zone}</dt>
+                    <dd className="mt-0.5 text-lg font-bold tabular-nums">{count}</dd>
+                  </div>
+                ))}
+              </dl>
             </Card>
           ) : null}
 

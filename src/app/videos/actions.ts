@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient, getCurrentUser, isAdmin } from '@/lib/supabase/server';
 import { describeError, fail, ok, text, type ActionState } from '@/lib/action-result';
+import { parsePitchPoint } from '@/lib/pitch';
 import { getFeatures } from '@/lib/features';
 import { parseVideoSource } from '@/lib/video-source';
 import { parseTimestamp } from '@/lib/format';
@@ -67,6 +68,10 @@ export async function addAnnotation(formData: FormData): Promise<ActionState> {
   const note = text(formData, 'note');
   if (!note) return fail('메모 내용을 입력하세요.');
 
+  // 위치는 선택사항이다. 둘 중 하나만 오면 거부한다.
+  const point = parsePitchPoint(text(formData, 'pitch_x'), text(formData, 'pitch_y'));
+  if (point === 'invalid') return fail('경기장 위치가 올바르지 않습니다. 다시 찍어 주세요.');
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from('video_annotations').insert({
     video_id: videoId,
@@ -74,6 +79,8 @@ export async function addAnnotation(formData: FormData): Promise<ActionState> {
     player_id: text(formData, 'player_id'),
     note,
     created_by: user.email ?? user.id,
+    pitch_x: point?.x ?? null,
+    pitch_y: point?.y ?? null,
   });
 
   if (error) return fail(describeError(error));

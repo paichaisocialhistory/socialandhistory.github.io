@@ -101,4 +101,7 @@ export type VideoAnnotation = {
   note: string | null;
   created_by: string | null;
   created_at: string;
+  /** 경기장 위치(0~1 비율). 찍지 않은 메모는 null. */
+  pitch_x: number | null;
+  pitch_y: number | null;
 };
