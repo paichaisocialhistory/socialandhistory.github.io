@@ -87,7 +87,31 @@ select id, email, '홍길동 선생님' from auth.users where email = 'teacher@s
 `admins` 표에는 RLS 상 쓰기 정책이 없으므로, 관리자 추가·삭제는 항상 대시보드
 (service_role)에서만 가능합니다. 교사 계정이 스스로 권한을 올릴 수 없습니다.
 
-### 2.4 학생 로그인용 구글 공급자 설정
+### 2.4 학생 계정 (교사 발급)
+
+학생에게 학교 이메일이 없어도 됩니다. 관리자가 `/admin/accounts` 에서 승인된
+선수를 골라 계정을 발급하면, 학생은 **학번과 비밀번호**로 로그인합니다.
+
+- 아이디는 `학번@NEXT_PUBLIC_STUDENT_ACCOUNT_DOMAIN` 으로 자동 생성됩니다.
+  실제 메일 주소가 아니며 메일은 발송되지 않습니다. 기본 도메인은 RFC 2606 이
+  예약한 `.invalid` 라 바깥으로 메일이 샐 수 없습니다.
+- 초기 비밀번호는 **발급 직후 한 번만** 화면에 표시됩니다(DB 에는 해시만 남습니다).
+  인쇄해서 나눠 주고, 학생은 `/account/password` 에서 바꿉니다.
+- 비밀번호를 잊은 학생은 관리자가 같은 화면에서 재설정합니다.
+
+**필요한 환경변수:** `SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API 의
+`service_role` 키).
+
+> **이 키는 RLS 를 통째로 우회합니다.** 반드시 `NEXT_PUBLIC_` 없이 서버 환경변수로만
+> 두세요. 코드에서는 `src/lib/supabase/admin.ts` 가 `server-only` 로 보호하며,
+> 클라이언트 컴포넌트가 이 모듈을 가져오면 빌드가 실패합니다. 키를 설정하지 않으면
+> 발급 기능만 꺼지고 나머지 기능은 정상 동작합니다.
+
+### 2.5 학생 로그인용 구글 공급자 설정 (선택)
+
+학교에 구글 워크스페이스(교육용)가 있다면 구글 로그인도 쓸 수 있습니다.
+`NEXT_PUBLIC_ENABLE_GOOGLE_LOGIN=true` 로 켜고 아래를 설정하세요. 없으면
+2.4 의 교사 발급 계정만으로 충분합니다.
 
 학생은 학교 구글 계정으로 로그인합니다. Supabase 대시보드에서 설정합니다.
 
@@ -100,7 +124,7 @@ select id, email, '홍길동 선생님' from auth.users where email = 'teacher@s
 > 먼저 보여 줄 뿐, 실제 제한은 아닙니다. 외부인 가입을 막으려면 Google Cloud Console 의 OAuth
 > 동의 화면을 **내부(Internal)** 로 설정하세요.
 
-### 2.5 계정 역할 지정
+### 2.6 계정 역할 지정
 
 처음 로그인한 계정은 모두 **학생**으로 생성됩니다(DB 트리거 `handle_new_user`).
 
@@ -108,7 +132,7 @@ select id, email, '홍길동 선생님' from auth.users where email = 'teacher@s
 - 학생은 `/admin/accounts` 에서 **선수와 연결**해야 자기 경기 장면을 볼 수 있습니다.
 - `admins` 표에 등록된 계정은 역할과 무관하게 항상 교직원 권한을 가집니다.
 
-### 2.6 권장 인증 설정
+### 2.7 권장 인증 설정
 
 - Authentication → Providers → Email 에서 **"Enable email signup" 을 끕니다.**
   교사 계정은 대시보드에서만 발급합니다.
@@ -166,11 +190,12 @@ Supabase 무료 프로젝트는 **7일간 API 요청이 없으면 자동 일시�
 | `/schedule` | 경기 일정 등록 · 점수 입력 · 결과 확정 | 조회 공개 / 쓰기 관리자 |
 | `/standings` | 자동 순위표 | 전체 공개 |
 | `/videos`, `/videos/[id]` | 영상 목록 · 재생 · 타임스탬프 메모 | 교직원 |
-| `/login` | 학생·교사 구글 로그인 | — |
+| `/login` | 학생 로그인 (학번 + 비밀번호) | — |
+| `/account/password` | 본인 비밀번호 변경 | 로그인 사용자 |
 | `/admin/login` | 관리자 이메일 로그인 | — |
 | `/admin/players` | 선수 등록 승인 · 반려 | 관리자 |
 | `/admin/abilities` | 능력치 변경 요청 승인 · 반려 | 관리자 |
-| `/admin/accounts` | 계정 역할 지정 · 학생↔선수 연결 | 관리자 |
+| `/admin/accounts` | 학생 계정 발급 · 비밀번호 재설정 · 역할 지정 | 관리자 |
 
 ---
 

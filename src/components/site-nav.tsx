@@ -49,7 +49,9 @@ export function SiteNav(props: NavProps) {
 
   const accountArea = props.userEmail ? (
     <form action={signOut} className="flex items-center gap-2">
-      <span className="muted hidden text-xs sm:inline">{props.userEmail}</span>
+      <Link href="/account/password" className="muted hidden text-xs underline sm:inline">
+        비밀번호 변경
+      </Link>
       <button type="submit" className="btn-secondary !px-2.5 !py-1 !text-xs">
         로그아웃
       </button>

@@ -2,8 +2,36 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { fail, text, type ActionState } from '@/lib/action-result';
+import { toLoginEmail } from '@/lib/student-account';
+
+/**
+ * 학번과 비밀번호로 로그인한다.
+ * 학생은 학번만 입력하면 되고, 교직원은 이메일을 그대로 넣어도 된다.
+ */
+export async function signInWithStudentNo(formData: FormData): Promise<ActionState> {
+  const identifier = text(formData, 'student_no');
+  const password = text(formData, 'password');
+
+  if (!identifier || !password) return fail('학번과 비밀번호를 모두 입력하세요.');
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: toLoginEmail(identifier),
+    password,
+  });
+
+  // 계정 존재 여부가 드러나지 않도록 사유를 구분하지 않는다.
+  if (error) return fail('학번 또는 비밀번호가 올바르지 않습니다.');
+
+  const next = text(formData, 'next') ?? '/';
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+
+  revalidatePath('/', 'layout');
+  redirect(safeNext);
+}
 
 /**
  * 학교 구글 계정으로 로그인한다.
