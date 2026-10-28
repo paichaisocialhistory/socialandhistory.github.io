@@ -9,6 +9,8 @@
 -- 1) 비로그인 신청서 제출을 막는다.
 -- -----------------------------------------------------------------------------
 drop policy if exists players_insert_application on public.players;
+-- 새 이름도 먼저 지운다. 이 파일을 두 번 실행해도 오류가 나지 않게 한다.
+drop policy if exists players_insert_staff on public.players;
 
 create policy players_insert_staff on public.players
   for insert to authenticated
