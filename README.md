@@ -87,8 +87,13 @@ CLI 없이: 대시보드 → SQL Editor 에서 아래 순서로 붙여넣고 실
 
 ```sql
 insert into public.admins (user_id, email, display_name)
-select id, email, '홍길동 선생님' from auth.users where email = 'teacher@school.kr';
+select id, email, '홍길동 선생님' from auth.users where email = 'teacher@school.kr'
+on conflict (user_id) do update
+  set email = excluded.email, display_name = excluded.display_name;
 ```
+
+`on conflict` 가 있어 **여러 번 실행해도 안전합니다.** 이미 등록된 계정이면 이름만
+갱신됩니다.
 
 `admins` 표에는 RLS 상 쓰기 정책이 없으므로, 관리자 추가·삭제는 항상 대시보드
 (service_role)에서만 가능합니다. 교사 계정이 스스로 권한을 올릴 수 없습니다.
