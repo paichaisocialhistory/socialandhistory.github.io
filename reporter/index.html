@@ -102,6 +102,7 @@
             <div>
               <div class="iv-name" id="ivName"></div>
               <div class="iv-meta" id="ivMeta"></div>
+              <div class="iv-source" id="ivSource"></div>
             </div>
           </div>
         </div>
@@ -175,21 +176,17 @@
         <div class="actions">
           <button id="editAgainBtn" class="btn" type="button">기사 고치기</button>
           <button id="downloadBtn2" class="btn" type="button">💾 파일로 저장</button>
-          <button id="toShareBtn" class="btn primary" type="button" hidden>📰 우리 반 기사 보러 가기 →</button>
+          <button id="toShareBtn" class="btn primary" type="button" hidden>📰 기자들의 기사 보러 가기 →</button>
         </div>
       </div>
     </section>
 
-    <!-- 7. 공유: 우리 반 기사 읽고 댓글 달기 -->
+    <!-- 7. 공유: 기자들의 기사 읽고 댓글 달기 (누구나 볼 수 있음) -->
     <section id="screen-share" class="screen" hidden>
       <div class="paper">
-        <p class="kicker">우리 반 신문</p>
-        <h1 class="headline">친구들의 기사 읽고 댓글 달기</h1>
+        <p class="kicker">기자단 신문</p>
+        <h1 class="headline">다른 기자들의 기사 읽고 댓글 달기</h1>
         <p class="lead">댓글은 <b>선생님이 확인하고 승인한 뒤에</b> 친구들에게 보여요. 잘 쓴 점 한 가지와, 궁금한 점이나 제안 한 가지를 역사적 사실을 들어 써 보세요.</p>
-        <form id="codeForm" class="code-row" autocomplete="off">
-          <input id="classCodeInput" type="text" maxlength="20" placeholder="선생님이 알려 준 반 코드" required>
-          <button class="btn primary" type="submit">기사 불러오기</button>
-        </form>
         <p id="shareStatus" class="share-status" hidden></p>
         <div id="articleList" class="article-list"></div>
         <div class="actions">
@@ -199,6 +196,10 @@
       </div>
     </section>
   </main>
+
+  <footer class="site-foot">
+    <button id="creditsBtn" class="btn-link" type="button">📚 자료 출처와 저작권</button>
+  </footer>
 
   <!-- 사실 확인 / 취재 수첩 대화상자 -->
   <dialog id="factDialog" class="dialog">
@@ -211,6 +212,14 @@
         <button class="btn" value="cancel" type="submit">닫기</button>
         <button id="factSubmit" class="btn primary" type="button">확인</button>
       </div>
+    </form>
+  </dialog>
+
+  <dialog id="creditsDialog" class="dialog">
+    <form method="dialog">
+      <h3>📚 자료 출처와 저작권</h3>
+      <div id="creditsBody" class="credits"></div>
+      <div class="actions"><button class="btn" type="submit">닫기</button></div>
     </form>
   </dialog>
 

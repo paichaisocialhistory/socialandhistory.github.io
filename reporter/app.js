@@ -164,8 +164,8 @@
       el('div', { class: 'tip' }, el('b', null, t.label), el('span', null, t.example))));
     $('#startBtn').textContent = COMMON && !commonDone() ? '공통 인터뷰 시작하기 →' : '취재 목록으로 →';
     $('#answerNote').textContent = aiOn()
-      ? '인물들의 대답은 AI가 실제 역사 자료를 바탕으로 만듭니다. AI도 틀릴 수 있으니, 대답마다 📜 근거를 열어 실제 역사적 사실과 비교해 보세요.'
-      : '인물들은 실제 역사 자료로 준비된 대답만 합니다. 대답마다 📜 근거를 열어 실제 역사적 사실을 확인할 수 있어요.';
+      ? '인물들의 대답은 AI가 실제 역사 자료를 바탕으로 만듭니다. AI도 틀릴 수 있으니, 대답마다 📜 역사적 사실을 열어 비교해 보세요.'
+      : '인물들은 실제 역사 자료로 준비된 대답만 합니다. 대답마다 📜 역사적 사실을 열어 확인할 수 있어요.';
   }
   $('#startBtn').addEventListener('click', () => {
     if (COMMON && !commonDone()) openInterview(COMMON.id);
@@ -183,11 +183,28 @@
       : el('span', { class: 'badge' }, '아직 만나지 않음');
     return el('button', { class: 'person' + (p.common ? ' common' : ''), type: 'button', disabled: locked, onclick: () => openInterview(p.id) },
       el('div', { class: 'top' },
-        el('span', { class: 'emoji' }, p.emoji),
+        avatarNode(p),
         el('div', null, el('div', { class: 'name' }, p.name), el('div', { class: 'role' }, p.role))),
       el('div', { class: 'place' }, `📍 ${p.when} · ${p.where}`),
       el('div', { class: 'desc' }, p.intro),
+      p.source ? el('div', { class: 'source' }, `출처: ${p.source}`) : null,
       badge);
+  }
+
+  // 인물 얼굴: 사진(퍼블릭 도메인)이 있으면 사진, 없거나 못 불러오면 이모지
+  const photoShown = new Set(); // 사진 파일을 실제로 불러온 인물 (그때만 사진 출처를 보여 준다)
+  function avatarNode(p, onPhoto) {
+    const box = el('span', { class: 'emoji' }, p.emoji);
+    if (p.photo && p.photo.src) {
+      const img = el('img', { class: 'photo', src: p.photo.src, alt: `${p.name} 사진`, title: p.photo.credit || '' });
+      img.addEventListener('load', () => {
+        box.replaceChildren(img);
+        box.classList.add('has-photo');
+        photoShown.add(p.id);
+        if (onPhoto) onPhoto();
+      });
+    }
+    return box;
   }
 
   function groupBox(g, locked) {
@@ -198,6 +215,7 @@
         el('div', { class: 'group-title' }, `${g.emoji} ${g.title}`),
         el('span', { class: 'badge' + (doneAll ? ' done' : '') }, doneAll ? '✔ 묶음 취재 완료' : `${names.join(' → ')} 차례로 · 모두 마치면 1명분`)),
       el('p', { class: 'group-intro' }, g.intro),
+      g.source ? el('p', { class: 'source' }, `출처: ${g.source}`) : null,
       el('div', { class: 'people' }, ...g.members.map((id, i) => {
         const prev = peopleById[g.members[i - 1]];
         const lockedHere = locked || groupLocked(id);
@@ -249,9 +267,11 @@
   function renderInterview() {
     const p = peopleById[state.currentPid];
     if (!p) return show('map');
-    $('#ivEmoji').textContent = p.emoji;
+    const sourceLine = () => [p.source ? `출처: ${p.source}` : '', photoShown.has(p.id) && p.photo.credit ? p.photo.credit : ''].filter(Boolean).join(' · ');
+    $('#ivEmoji').replaceChildren(avatarNode(p, () => { $('#ivSource').textContent = sourceLine(); }));
     $('#ivName').textContent = p.name;
     $('#ivMeta').textContent = `${p.role} · ${p.when} · ${p.where}`;
+    $('#ivSource').textContent = sourceLine();
     $('#chat').replaceChildren(...state.chats[p.id].map((m) => messageNode(p, m)));
     renderSuggestions(p);
     updateInterviewFooter(p);
@@ -281,10 +301,10 @@
     if (srcs.length) {
       const srcBox = el('div', { class: 'src', hidden: true },
         ...srcs.map((q) => el('div', null, `📜 ${q.src}`)));
-      const srcBtn = el('button', { type: 'button' }, '📜 근거 보기');
+      const srcBtn = el('button', { type: 'button' }, '📜 역사적 사실 보기');
       srcBtn.addEventListener('click', () => {
         srcBox.hidden = !srcBox.hidden;
-        srcBtn.textContent = srcBox.hidden ? '📜 근거 보기' : '📜 근거 닫기';
+        srcBtn.textContent = srcBox.hidden ? '📜 역사적 사실 보기' : '📜 역사적 사실 닫기';
       });
       tools.append(srcBtn);
       node.append(tools, srcBox);
@@ -292,8 +312,8 @@
       node.append(tools);
     }
     if (m.ai) node.append(el('div', { class: 'ai-tag' }, srcs.length
-      ? '🤖 AI가 역사 자료를 바탕으로 만든 대답이에요. 근거와 비교해 보세요.'
-      : '🤖 AI 대답 · 자료에 없는 내용이라 근거가 없어요.'));
+      ? '🤖 AI가 역사 자료를 바탕으로 만든 대답이에요. 역사적 사실과 비교해 보세요.'
+      : '🤖 AI 대답 · 자료에 없는 내용이라 확인할 역사적 사실이 없어요.'));
     return node;
   }
 
@@ -782,7 +802,7 @@ ${article.body}
       g('🔎 사실을 다시 확인해 볼 부분', r.factChecks.map((f) =>
         el('li', { class: 'fb-fact' }, f.sentence ? el('q', null, f.sentence) : '', f.comment)));
       if (r.question) groups.push(el('div', { class: 'fb-group' }, el('h4', null, '💭 생각해 볼 질문'), el('p', { class: 'fb-note' }, r.question)));
-      groups.push(el('p', { class: 'fb-note' }, '🤖 AI 편집장의 의견이에요. AI도 틀릴 수 있으니 📜 근거와 취재 수첩을 보며 스스로 판단하고 고쳐 쓰세요.'));
+      groups.push(el('p', { class: 'fb-note' }, '🤖 AI 편집장의 의견이에요. AI도 틀릴 수 있으니 📜 역사적 사실과 취재 수첩을 보며 스스로 판단하고 고쳐 쓰세요.'));
     }
     box.replaceChildren(...groups);
     box.hidden = false;
@@ -995,13 +1015,11 @@ ${article.body}
 
   function whoAmI() {
     const s = state.student;
-    return { grade: s.grade, classNo: s.classNo, name: s.name, studentId: `${s.grade}-${s.classNo}-${s.studentNo}-${s.name}`, classCode: state.classCode || '' };
+    return { grade: s.grade, classNo: s.classNo, name: s.name, studentId: `${s.grade}-${s.classNo}-${s.studentNo}-${s.name}` };
   }
 
   function renderShare() {
-    $('#classCodeInput').value = state.classCode || '';
-    if (state.classCode) loadArticles();
-    else { $('#articleList').replaceChildren(); shareStatus('선생님이 알려 준 반 코드를 넣고 [기사 불러오기]를 누르세요.'); }
+    loadArticles();
   }
 
   let loading = false;
@@ -1013,7 +1031,7 @@ ${article.body}
     loading = false;
     if (!res.success) { shareStatus(res.error || '기사를 불러오지 못했어요.', 'err'); return; }
     const articles = [...res.articles].sort((a, b) => b.mine - a.mine);
-    shareStatus(articles.length ? `우리 반 기사 ${articles.length}편` : '아직 제출된 기사가 없어요.');
+    shareStatus(articles.length ? `기자들의 기사 ${articles.length}편` : '아직 제출된 기사가 없어요.');
     $('#articleList').replaceChildren(...articles.map(articleCard));
   }
 
@@ -1064,15 +1082,27 @@ ${article.body}
     return form;
   }
 
-  $('#codeForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    state.classCode = $('#classCodeInput').value.trim();
-    save();
-    loadArticles();
-  });
-  $('#shareRefreshBtn').addEventListener('click', () => { if (state.classCode) loadArticles(); });
+  $('#shareRefreshBtn').addEventListener('click', () => loadArticles());
   $('#shareBackBtn').addEventListener('click', () => show('done'));
   $('#toShareBtn').addEventListener('click', () => show('share'));
+
+  // ---------- 자료 출처와 저작권 ----------
+  function renderCredits() {
+    const people = DATA.people.filter((p) => p.source).map((p) =>
+      el('li', null, el('b', null, p.name), ` — ${p.source}`, photoShown.has(p.id) && p.photo.credit ? el('div', null, p.photo.credit) : null));
+    $('#creditsBody').replaceChildren(
+      el('p', null, '이 사이트는 중학교 역사 수업을 위한 비영리 교육 자료입니다. 인물들의 말은 아래 자료를 바탕으로 교육 목적에 맞게 요약·재구성한 것이며, 원문을 그대로 옮기지 않았습니다. 만나는 장면(언제·어디서)은 상상으로 꾸몄습니다.'),
+      el('h4', null, '인물별 자료 출처'),
+      el('ul', null, ...people),
+      el('h4', null, '그 밖의 자료'),
+      el('ul', null,
+        el('li', null, '연표와 전쟁의 흐름: 중학교 역사 교육과정의 일반적인 역사적 사실을 정리'),
+        el('li', null, '이우근의 편지(1950)는 저작권 보호 기간이 지난 자료입니다.'),
+        el('li', null, '글꼴: Noto Sans KR, Noto Serif KR (SIL Open Font License)'),
+        el('li', null, '인물의 대답과 기사 피드백은 AI(Claude)가 위 자료를 바탕으로 만들며, 틀릴 수 있습니다.')),
+      el('p', null, '자료의 저작권은 각 원저작자와 소장 기관에 있습니다. 출처 표시에 빠진 것이 있으면 선생님께 알려 주세요.'));
+  }
+  $('#creditsBtn').addEventListener('click', () => { renderCredits(); $('#creditsDialog').showModal(); });
 
   // ---------- 시작 ----------
   if (window.claude && typeof window.claude.use === 'function') {
