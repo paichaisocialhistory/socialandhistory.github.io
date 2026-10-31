@@ -266,7 +266,7 @@
 
   function renderInterview() {
     const p = peopleById[state.currentPid];
-    if (!p) return show('map');
+    if (!p || !state.chats[p.id]) return show('map');
     const sourceLine = () => [p.source ? `출처: ${p.source}` : '', photoShown.has(p.id) && p.photo.credit ? p.photo.credit : ''].filter(Boolean).join(' · ');
     $('#ivEmoji').replaceChildren(avatarNode(p, () => { $('#ivSource').textContent = sourceLine(); }));
     $('#ivName').textContent = p.name;
@@ -311,10 +311,23 @@
     } else {
       node.append(tools);
     }
+    (m.photos || []).forEach((id) => {
+      const q = p.questions.find((x) => x.id === id);
+      if (q && q.photo) node.append(photoFigure(q.photo));
+    });
     if (m.ai) node.append(el('div', { class: 'ai-tag' }, srcs.length
       ? '🤖 AI가 역사 자료를 바탕으로 만든 대답이에요. 역사적 사실과 비교해 보세요.'
       : '🤖 AI 대답 · 자료에 없는 내용이라 확인할 역사적 사실이 없어요.'));
     return node;
+  }
+
+  // 인터뷰 속 역사 사진 (파일을 못 불러오면 조용히 빠진다)
+  function photoFigure(ph) {
+    const img = el('img', { src: ph.src, alt: ph.caption || '역사 사진', loading: 'lazy' });
+    const fig = el('figure', { class: 'iv-photo' }, img,
+      el('figcaption', null, ph.caption || '', ph.credit ? el('span', { class: 'credit' }, ph.credit) : null));
+    img.addEventListener('error', () => fig.remove());
+    return fig;
   }
 
   function renderSuggestions(p) {
@@ -499,6 +512,13 @@ ${talk}
     if (!answer) answer = preparedReply(p, text);
 
     const reply = { from: 'them', mid: `${Date.now()}-${chat.length}`, text: answer.text, basis: answer.basis, ai: !!answer.ai };
+    // 대답에 쓰인 역사 자료에 사진이 있으면 함께 보여 준다 (이 인터뷰에서 처음 나올 때 한 번만)
+    const shownPhotos = new Set(chat.flatMap((m) => m.photos || []));
+    const photos = reply.basis.filter((id) => {
+      const q = p.questions.find((x) => x.id === id);
+      return q && q.photo && q.photo.src && !shownPhotos.has(id);
+    });
+    if (photos.length) reply.photos = photos;
     const asked = state.asked[p.id] || (state.asked[p.id] = []);
     reply.basis.forEach((id) => { if (!asked.includes(id)) asked.push(id); });
     chat.push(reply);
@@ -1088,12 +1108,15 @@ ${article.body}
 
   // ---------- 자료 출처와 저작권 ----------
   function renderCredits() {
+    const photoCredits = DATA.people.flatMap((p) => p.questions.filter((q) => q.photo && q.photo.src)
+      .map((q) => el('li', null, el('b', null, q.photo.caption || p.name), q.photo.credit ? ` — ${q.photo.credit}` : '')));
     const people = DATA.people.filter((p) => p.source).map((p) =>
       el('li', null, el('b', null, p.name), ` — ${p.source}`, photoShown.has(p.id) && p.photo.credit ? el('div', null, p.photo.credit) : null));
     $('#creditsBody').replaceChildren(
       el('p', null, '이 사이트는 중학교 역사 수업을 위한 비영리 교육 자료입니다. 인물들의 말은 아래 자료를 바탕으로 교육 목적에 맞게 요약·재구성한 것이며, 원문을 그대로 옮기지 않았습니다. 만나는 장면(언제·어디서)은 상상으로 꾸몄습니다.'),
       el('h4', null, '인물별 자료 출처'),
       el('ul', null, ...people),
+      ...(photoCredits.length ? [el('h4', null, '인터뷰 속 역사 사진'), el('ul', null, ...photoCredits)] : []),
       el('h4', null, '그 밖의 자료'),
       el('ul', null,
         el('li', null, '연표와 전쟁의 흐름: 중학교 역사 교육과정의 일반적인 역사적 사실을 정리'),
