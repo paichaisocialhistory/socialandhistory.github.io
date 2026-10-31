@@ -14,7 +14,7 @@
  *   5. 웹 앱 URL(…/exec)을 reporter/config.js의 SHEET_URL에 붙여넣기
  *
  * 기사 공유·댓글 (선택):
- *   - '반코드' 탭에 학년, 반, 반코드를 적은 반만 공유 화면이 열립니다.
+ *   - 반코드 없이 누구나 제출된 모든 기사를 읽고 댓글을 쓸 수 있습니다.
  *   - 학생이 쓴 댓글은 '댓글' 탭에 '승인' 체크가 꺼진 채로 들어옵니다.
  *     선생님이 '승인' 칸을 체크해야 친구들에게 보입니다.
  *   - 기사를 공유 화면에서 빼려면 '기자활동결과' 탭의 '공유숨김' 칸을 체크합니다.
@@ -46,7 +46,8 @@ const ID_COLUMN = COLUMNS.length; // 학생ID는 마지막 열
 const HIDE_COLUMN = COLUMNS.length + 1; // 그 오른쪽: 공유숨김 (선생님이 체크)
 
 // 공유 화면에 기자 이름을 보일지 (false면 '1번 기자', '2번 기자'처럼 번호로 보임)
-const SHOW_NAMES = true;
+// 누구나 볼 수 있는 화면이라 기본은 이름을 숨긴다 (true로 바꾸면 '홍길동 기자'처럼 보임)
+const SHOW_NAMES = false;
 const CODE_SHEET = '반코드';
 const COMMENT_SHEET = '댓글';
 const COMMENT_HEADER = ['작성시각', '학년', '반', '기사ID', '기사제목', '댓글쓴학생ID', '댓글쓴이', '내용', '승인'];
@@ -102,12 +103,8 @@ function saveArticle_(data) {
 // ---------- 기사 공유·댓글 ----------
 
 // 반코드가 맞는지 확인. 맞지 않으면 오류 메시지를 돌려줌
+// 예전에는 반코드를 확인했지만, 지금은 누구나 볼 수 있게 열어 두었다.
 function checkClassCode_(data) {
-  const sheet = getCodeSheet_();
-  const rows = sheet.getLastRow() < 2 ? [] : sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
-  const row = rows.find(([g, c]) => String(g) === String(data.grade) && String(c) === String(data.classNo));
-  if (!row || !String(row[2]).trim()) return '선생님이 아직 우리 반 공유를 열지 않았어요.';
-  if (String(row[2]).trim() !== String(data.classCode || '').trim()) return '반 코드가 맞지 않아요.';
   return null;
 }
 
@@ -117,14 +114,19 @@ function articleId_(studentId) {
   return bytes.slice(0, 6).map(b => ((b + 256) % 256).toString(16).padStart(2, '0')).join('');
 }
 
+// grade, classNo를 주면 그 반만, 주지 않으면 모든 반의 기사
 function classArticles_(grade, classNo) {
   const sheet = getSheet_();
   if (sheet.getLastRow() < 2) return [];
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, HIDE_COLUMN).getValues();
   const col = title => COLUMNS.findIndex(([t]) => t === title);
   return values
-    .filter(r => String(r[col('학년')]) === String(grade) && String(r[col('반')]) === String(classNo) && r[HIDE_COLUMN - 1] !== true)
+    .filter(r => r[HIDE_COLUMN - 1] !== true && r[col('학생ID')] &&
+      (!grade || !classNo || (String(r[col('학년')]) === String(grade) && String(r[col('반')]) === String(classNo))))
     .map(r => ({
+      grade: r[col('학년')],
+      classNo: r[col('반')],
+      submittedAt: r[col('제출시각')],
       studentId: r[col('학생ID')],
       studentNo: r[col('번호')],
       name: r[col('이름')],
@@ -134,13 +136,14 @@ function classArticles_(grade, classNo) {
       learned: r[col('새로알게된사실')],
       think: r[col('전쟁과평화에대한생각')],
     }))
-    .sort((a, b) => Number(a.studentNo) - Number(b.studentNo));
+    .sort((a, b) => Number(a.grade) - Number(b.grade) || Number(a.classNo) - Number(b.classNo) || Number(a.studentNo) - Number(b.studentNo));
 }
 
 function listArticles_(data) {
   const codeError = checkClassCode_(data);
   if (codeError) return { success: false, error: codeError };
-  const articles = classArticles_(data.grade, data.classNo);
+  // 학급 신문(onlyClass)은 그 반만, 학생 공유 화면은 모든 기사
+  const articles = data.onlyClass ? classArticles_(data.grade, data.classNo) : classArticles_();
   const comments = getCommentSheet_();
   const crows = comments.getLastRow() < 2 ? [] : comments.getRange(2, 1, comments.getLastRow() - 1, COMMENT_HEADER.length).getValues();
   return {
@@ -151,7 +154,7 @@ function listArticles_(data) {
       const list = crows
         .filter(r => r[3] === id && (r[8] === true || r[5] === data.studentId)) // 승인된 것 + 내가 쓴 대기 중인 것
         .map(r => ({
-          author: SHOW_NAMES ? r[6] : '친구',
+          author: SHOW_NAMES ? r[6] : `${r[1]}학년 ${r[2]}반 기자`,
           text: r[7],
           time: Utilities.formatDate(new Date(r[0]), 'Asia/Seoul', 'M/d HH:mm'),
           pending: r[8] !== true,
@@ -159,7 +162,7 @@ function listArticles_(data) {
       return {
         id,
         mine,
-        reporter: SHOW_NAMES ? `${a.name} 기자` : `${a.studentNo}번 기자`,
+        reporter: SHOW_NAMES ? `${a.grade}학년 ${a.classNo}반 ${a.name} 기자` : `${a.grade}학년 ${a.classNo}반 ${a.studentNo}번 기자`,
         headline: a.headline,
         body: a.body,
         people: a.people,
@@ -178,7 +181,7 @@ function addComment_(data) {
   if (text.length < 5) return { success: false, error: '댓글을 5글자 이상 써 주세요.' };
   if (text.length > COMMENT_MAX_LENGTH) return { success: false, error: `댓글은 ${COMMENT_MAX_LENGTH}자까지 쓸 수 있어요.` };
 
-  const article = classArticles_(data.grade, data.classNo).find(a => articleId_(a.studentId) === data.articleId);
+  const article = classArticles_().find(a => articleId_(a.studentId) === data.articleId);
   if (!article) return { success: false, error: '기사를 찾을 수 없어요.' };
   if (article.studentId === data.studentId) return { success: false, error: '내 기사에는 댓글을 달 수 없어요.' };
 
@@ -221,7 +224,7 @@ function getCommentSheet_() {
 
 // 브라우저에서 웹 앱 URL을 열었을 때 연결을 확인하는 용도
 function doGet() {
-  getCodeSheet_();     // 처음 열 때 '반코드'와 '댓글' 탭을 만들어 둠
+  // (반코드 탭은 더 이상 쓰지 않음)
   getCommentSheet_();
   return json_({ status: 'ok', message: '전쟁 현장 취재 기자 Google Apps Script가 작동 중입니다.' });
 }

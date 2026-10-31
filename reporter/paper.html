@@ -103,11 +103,10 @@
   <div class="panel">
     <div class="panel-box">
       <h1>🗞️ 학급 신문 만들기</h1>
-      <p>학생들이 제출한 기사를 모아 신문 한 부로 만들고 인쇄합니다. 시트의 <b>반코드</b> 탭에 적은 반코드를 넣으세요. <b>공유숨김</b>을 체크한 기사는 빠지고, 댓글은 <b>선생님이 승인한 것만</b> 실립니다.</p>
+      <p>학생들이 제출한 기사를 반별로 모아 신문 한 부로 만들고 인쇄합니다. 학년과 반을 넣으세요. <b>공유숨김</b>을 체크한 기사는 빠지고, 댓글은 <b>선생님이 승인한 것만</b> 실립니다.</p>
       <form id="loadForm" class="row" autocomplete="off">
         <label>학년 <input id="grade" type="number" min="1" max="3" value="3" required></label>
         <label>반 <input id="classNo" type="number" min="1" max="20" required></label>
-        <label>반코드 <input id="classCode" type="text" maxlength="20" required></label>
         <button class="btn primary" type="submit">기사 불러오기</button>
         <button id="sampleBtn" class="btn" type="button">예시로 미리 보기</button>
       </form>
@@ -197,7 +196,7 @@
       e.preventDefault();
       if (!SHEET_URL) { status('config.js에 SHEET_URL이 없어 기사를 불러올 수 없어요. 예시로 미리 볼 수는 있어요.', true); return; }
       const body = { action: 'list', grade: Number($('#grade').value), classNo: Number($('#classNo').value),
-        classCode: $('#classCode').value.trim(), studentId: 'teacher', name: '선생님' };
+        onlyClass: true, studentId: 'teacher', name: '선생님' };
       status('기사를 불러오는 중…');
       try {
         const res = await fetch(SHEET_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
