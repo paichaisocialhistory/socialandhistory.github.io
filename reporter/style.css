@@ -136,6 +136,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .photo { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; filter: grayscale(.15); }
 .source { font-size: 12px; color: var(--ink-2); font-style: italic; }
 .iv-source { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
+.iv-photo { margin: 10px 0 2px; max-width: 420px; }
+.iv-photo img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 4px; background: var(--paper-2); }
+.iv-photo figcaption { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.5; }
+.iv-photo .credit { display: block; font-size: 11.5px; font-style: italic; }
 .site-foot { max-width: 980px; margin: 0 auto; padding: 8px 16px 28px; text-align: center; }
 .credits { display: grid; gap: 10px; font-size: 14px; }
 .credits h4 { margin: 4px 0 2px; font-size: 14px; }
