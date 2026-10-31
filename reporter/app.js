@@ -266,7 +266,7 @@
 
   function renderInterview() {
     const p = peopleById[state.currentPid];
-    if (!p) return show('map');
+    if (!p || !state.chats[p.id]) return show('map');
     const sourceLine = () => [p.source ? `출처: ${p.source}` : '', photoShown.has(p.id) && p.photo.credit ? p.photo.credit : ''].filter(Boolean).join(' · ');
     $('#ivEmoji').replaceChildren(avatarNode(p, () => { $('#ivSource').textContent = sourceLine(); }));
     $('#ivName').textContent = p.name;
