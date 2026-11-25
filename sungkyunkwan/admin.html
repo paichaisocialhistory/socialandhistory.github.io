@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>성균관 투어 관리</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">🗂️ <span>성균관 투어 · 선생님</span></span>
+    <div id="who" class="who" hidden>
+      <a class="btn-link" href="qr.html" target="_blank">QR 코드</a>
+      <button id="logoutBtn" class="btn-link" type="button">나가기</button>
+    </div>
+  </header>
+
+  <main id="admin" class="wide">
+    <section id="loginView" class="card narrow">
+      <p class="kicker">관리자</p>
+      <h1 class="title">학생 사진 확인</h1>
+      <p class="lead">Apps Script 코드의 <code>ADMIN_PASSWORD</code>에 정한 비밀번호를 입력하세요.</p>
+      <form id="loginForm" class="form">
+        <label>비밀번호 <input name="password" type="password" required autocomplete="current-password"></label>
+        <p id="loginError" class="error" hidden></p>
+        <button class="btn primary big" type="submit">들어가기</button>
+      </form>
+    </section>
+
+    <section id="mainView" hidden>
+      <div class="admin-head">
+        <div>
+          <h1 class="title">학생 제출 현황</h1>
+          <p class="muted" id="updated"></p>
+        </div>
+        <div class="admin-links">
+          <a id="folderLink" class="btn" target="_blank" rel="noopener">📁 드라이브 폴더</a>
+          <a id="sheetLink" class="btn" target="_blank" rel="noopener">📊 시트</a>
+          <button id="refreshBtn" class="btn primary" type="button">↻ 새로고침</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="toolbar">
+        <div class="seg" role="tablist">
+          <button type="button" data-view="students" class="on">학생별</button>
+          <button type="button" data-view="missions">미션별</button>
+        </div>
+        <select id="classFilter" aria-label="반"></select>
+        <select id="statusFilter" aria-label="상태">
+          <option value="">모든 사진</option>
+          <option value="제출">확인 전 사진만</option>
+          <option value="다시찍기">다시 찍기 요청한 것</option>
+        </select>
+        <input id="search" type="search" placeholder="이름·학번 찾기">
+        <label class="auto"><input id="autoRefresh" type="checkbox"> 1분마다 새로고침</label>
+      </div>
+
+      <div id="list"></div>
+    </section>
+  </main>
+
+  <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="사진 크게 보기">
+    <div class="lb-inner">
+      <button class="lb-close" type="button" id="lbClose" aria-label="닫기">✕</button>
+      <div class="lb-img">
+        <img id="lbImg" alt="">
+        <p id="lbLoading" class="lb-loading">원본 불러오는 중…</p>
+        <button class="lb-nav prev" type="button" id="lbPrev" aria-label="이전 사진">‹</button>
+        <button class="lb-nav next" type="button" id="lbNext" aria-label="다음 사진">›</button>
+      </div>
+      <div class="lb-side">
+        <p class="kicker" id="lbMission"></p>
+        <h2 class="h2" id="lbStudent"></h2>
+        <p class="muted" id="lbTime"></p>
+        <p class="muted" id="lbGuide"></p>
+        <label class="lb-memo">학생에게 보일 메모 (선택)
+          <textarea id="lbMemo" rows="2" maxlength="300" placeholder="예: 현판이 잘리지 않게 다시 찍어 주세요"></textarea>
+        </label>
+        <div class="lb-actions">
+          <button class="btn ok" type="button" data-review="확인">✅ 확인</button>
+          <button class="btn warn" type="button" data-review="다시찍기">🔁 다시 찍기 요청</button>
+        </div>
+        <a id="lbDownload" class="btn-link" download>원본 내려받기</a>
+        <p id="lbMsg" class="muted"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

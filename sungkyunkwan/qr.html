@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>성균관 투어 QR</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔳</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar"><span class="brand">🔳 <span>투어 접속 QR 코드</span></span></header>
+  <main>
+    <div class="card no-print">
+      <p class="lead" style="margin:0">학생에게 보여 주거나 인쇄해서 나눠 주세요. 이 화면에서 <b>Ctrl + P</b>를 누르면 QR만 인쇄됩니다.</p>
+    </div>
+    <div class="qr-grid">
+      <section class="card qr-card">
+        <p class="kicker">60분 코스 · 6곳</p>
+        <h1 class="title">🏯 성균관 역사 투어</h1>
+        <div class="qr-box" id="qrFull"></div>
+        <p class="qr-url" id="urlFull"></p>
+      </section>
+      <section class="card qr-card">
+        <p class="kicker">30분 코스 · 4곳</p>
+        <h1 class="title">🏯 성균관 역사 투어</h1>
+        <div class="qr-box" id="qrShort"></div>
+        <p class="qr-url" id="urlShort"></p>
+      </section>
+    </div>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    (function () {
+      var base = location.href.replace(/[?#].*$/, '').replace(/qr\.html$/, '');
+      [['Full', base + '?course=full'], ['Short', base + '?course=short']].forEach(function (p) {
+        document.getElementById('url' + p[0]).textContent = p[1];
+        if (window.QRCode) {
+          new QRCode(document.getElementById('qr' + p[0]), { text: p[1], width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        } else {
+          document.getElementById('qr' + p[0]).textContent = 'QR 코드를 만들지 못했어요. 인터넷 연결을 확인해 주세요.';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
