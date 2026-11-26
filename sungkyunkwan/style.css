@@ -266,6 +266,7 @@ code { background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-si
 
 /* ---------- QR 인쇄 ---------- */
 .qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.qr-grid.single { grid-template-columns: minmax(0, 420px); justify-content: center; }
 .qr-card { text-align: center; }
 .qr-box { display: inline-block; padding: 12px; background: #fff; border-radius: 8px; }
 .qr-box img, .qr-box canvas { display: block; }

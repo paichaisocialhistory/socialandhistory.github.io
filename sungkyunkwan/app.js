@@ -7,8 +7,6 @@
   const API = String(CFG.SCRIPT_URL || '').trim();
   const STORE = 'skk-tour-v1';
   const app = document.getElementById('app');
-  const params = new URLSearchParams(location.search);
-  const urlCourse = params.get('course') === 'short' ? 'short' : params.get('course') === 'full' ? 'full' : null;
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -28,9 +26,8 @@
     }
   }
 
-  // ---------- 코스·미션 ----------
-  const course = () => (state && state.course) || urlCourse || (CFG.COURSE === 'short' ? 'short' : 'full');
-  const stops = () => T.stops.filter((s) => course() === 'full' || s.short);
+  // ---------- 장소·미션 (모든 학생이 같은 코스로 6곳을 모두 돎) ----------
+  const stops = () => T.stops;
   const missions = () => stops().flatMap((s) => s.missions.map((m) => Object.assign({ stop: s }, m)));
   const photoOf = (id) => (state && state.photos && state.photos[id]) || null;
   const isDone = (id) => { const p = photoOf(id); return !!(p && p.uploaded && p.status !== '다시찍기'); };
@@ -112,10 +109,9 @@
 
   // ---------- 1. 로그인 ----------
   function renderLogin() {
-    const c = urlCourse || (CFG.COURSE === 'short' ? 'short' : 'full');
     app.innerHTML = `
       <section class="card narrow">
-        <p class="kicker">현장 학습 · ${c === 'short' ? '30분' : '60분'} 코스</p>
+        <p class="kicker">현장 학습 · ${T.stops.length}곳 · 약 60분</p>
         <h1 class="title">${esc(T.title)}</h1>
         <p class="lead">${esc(T.intro)}</p>
         <form id="loginForm" class="form" autocomplete="off" novalidate>
@@ -142,7 +138,7 @@
       const err = document.getElementById('loginError');
       if (!/^\d{4,6}$/.test(no)) { err.textContent = '학번을 숫자 4~6자리로 써 주세요.'; err.hidden = false; return; }
       if (name.length < 2) { err.textContent = '이름을 정확하게 써 주세요.'; err.hidden = false; return; }
-      state = { studentNo: no, name, course: c, photos: {}, quiz: null };
+      state = { studentNo: no, name, photos: {}, quiz: null };
       save();
       lastSync = 0;
       go('#/');
@@ -159,7 +155,7 @@
     const q = state.quiz;
     app.innerHTML = `
       <section class="hero">
-        <p class="kicker">${course() === 'short' ? '30분' : '60분'} 코스 · 사진 미션 ${total}개</p>
+        <p class="kicker">${stops().length}곳 · 사진 미션 ${total}개</p>
         <h1 class="title">${esc(T.subtitle)}</h1>
         <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}">
           <div class="bar" style="width:${pct}%"></div>
@@ -197,7 +193,7 @@
         <a class="stop ${done ? 'done' : ''}" href="#/stop/${s.id}">
           <span class="stop-no">${done ? '✔' : s.no}</span>
           <span class="stop-body">
-            <span class="stop-name">${s.icon} ${esc(s.name)} <small>${esc(s.time[course()] || '')}</small></span>
+            <span class="stop-name">${s.icon} ${esc(s.name)} <small>${esc(s.time || '')}</small></span>
             <span class="stop-q">${esc(s.question)}</span>
             <span class="chips">${chips || '<span class="chip">📖 읽기</span>'}</span>
           </span>
@@ -422,7 +418,7 @@
     go('#/result');
     if (API) {
       try {
-        await api('quiz', Object.assign(who(), { score, total: items.length, course: course(), wrong: wrong.join(' / ') }));
+        await api('quiz', Object.assign(who(), { score, total: items.length, course: 'full', wrong: wrong.join(' / ') }));
         lastResult.send = 'ok';
       } catch (e) {
         lastResult.send = 'fail';
@@ -480,8 +476,6 @@
     if (Object.values(pending).some((p) => p.state === 'uploading')) { e.preventDefault(); e.returnValue = ''; }
   });
 
-  // 주소에 코스가 있으면 로그인한 학생의 코스도 맞춤
-  if (state && urlCourse && state.course !== urlCourse) { state.course = urlCourse; save(); }
   render();
   sync(true);
 })();

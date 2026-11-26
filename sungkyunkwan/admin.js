@@ -10,7 +10,6 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const MISSIONS = T.stops.flatMap((s) => s.missions.map((m) => Object.assign({ stop: s }, m)));
-  const SHORT_IDS = MISSIONS.filter((m) => m.stop.short).map((m) => m.id);
   const missionById = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
 
   let password = '';
@@ -108,13 +107,8 @@
     if (s.length >= 5) return `${s[0]}-${Number(s.slice(1, 3))}`;
     return '기타';
   }
-  function expectedOf(st) {
-    let course = CFG.COURSE === 'short' ? 'short' : 'full';
-    if (st.quiz && st.quiz.course === '30분') course = 'short';
-    else if (st.quiz && st.quiz.course === '60분') course = 'full';
-    else if (Object.keys(st.photos).some((id) => SHORT_IDS.indexOf(id) === -1)) course = 'full';
-    return course === 'short' ? MISSIONS.filter((m) => m.stop.short) : MISSIONS;
-  }
+  // 모든 학생이 같은 코스로 모든 미션을 함
+  const expectedOf = () => MISSIONS;
   const okCount = (st) => expectedOf(st).filter((m) => st.photos[m.id] && st.photos[m.id].status !== '다시찍기').length;
 
   function fillClassFilter() {
