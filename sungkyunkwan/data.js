@@ -3,7 +3,6 @@
 // ============================================
 // 내용은 '성균관 역사 투어 유인물 (중3)'을 바탕으로 했습니다.
 // 장소(stops) 안의 missions가 사진 미션이고, quiz의 place는 문제가 어느 장소 설명에서 나왔는지입니다.
-// short: true 인 장소만 30분 코스에 나옵니다.
 // quiz의 options는 첫 번째가 정답입니다. (화면에서는 섞여서 나옵니다)
 
 window.TOUR = {
@@ -22,8 +21,7 @@ window.TOUR = {
       no: 1,
       name: '탕평비 · 하마비',
       icon: '🪨',
-      time: { full: '10분', short: '5분' },
-      short: true,
+      time: '10분',
       question: '왕은 왜 대학 앞에 비석을 세웠을까?',
       title: '"편 가르지 마라", 왕의 경고',
       story: [
@@ -37,7 +35,7 @@ window.TOUR = {
           id: 'tangpyeong',
           title: '탕평비 인증샷',
           label: '탕평비',
-          guide: '탕평비 비석 전체가 보이게, 우리 모둠이 함께 나오도록 찍어요.',
+          guide: '탕평비 비석 전체가 보이게, 나도 함께 나오도록 찍어요. (셀카도 좋아요)',
         },
       ],
       sources: [
@@ -49,8 +47,7 @@ window.TOUR = {
       no: 2,
       name: '대성전(문묘)',
       icon: '🏯',
-      time: { full: '12분', short: '8분' },
-      short: true,
+      time: '12분',
       question: '대학 안에 왜 사당이 있을까?',
       title: '조선판 \'명예의 전당\'',
       story: [
@@ -80,8 +77,7 @@ window.TOUR = {
       no: 3,
       name: '명륜당 · 은행나무',
       icon: '🌳',
-      time: { full: '13분', short: '10분' },
-      short: true,
+      time: '13분',
       question: '천 원짜리 지폐 속 건물은 어디일까?',
       title: '조선의 강의실',
       story: [
@@ -115,8 +111,7 @@ window.TOUR = {
       no: 4,
       name: '동재 · 서재 · 존경각',
       icon: '🛏️',
-      time: { full: '8분', short: '' },
-      short: false,
+      time: '8분',
       question: '유생은 어디서 자고 무엇을 읽었을까?',
       title: '기숙사와 도서관',
       story: [
@@ -143,8 +138,7 @@ window.TOUR = {
       no: 5,
       name: '비천당',
       icon: '📝',
-      time: { full: '7분', short: '' },
-      short: false,
+      time: '7분',
       question: '이 건물의 나무는 어디서 왔을까?',
       title: '절을 헐어 지은 시험장',
       story: [
@@ -170,8 +164,7 @@ window.TOUR = {
       no: 6,
       name: '정리 · 유생과 반촌 이야기',
       icon: '🏘️',
-      time: { full: '10분', short: '7분' },
-      short: true,
+      time: '10분',
       question: '오늘 가장 놀라운 사실은?',
       title: '조선 대학생의 하루와 대학 동네',
       story: [

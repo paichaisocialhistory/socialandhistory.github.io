@@ -102,6 +102,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outl
 .progress-text { margin: 8px 0 0; font-size: 15px; color: var(--ink-2); }
 
 .notice { border-radius: 8px; padding: 12px 14px; margin: 0 0 14px; font-size: 15px; }
+.notice.prize { background: #fbf1d6; border: 1px solid #e3c77f; color: #6b4c0c; font-weight: 700; }
+.prize-line { margin: -6px 0 14px; font-size: 14px; color: #7a5a14; }
 .notice.warn { background: #fff1e6; border: 1px solid #f0c9a8; color: #7a3d10; }
 
 /* 장소 목록 */
@@ -266,6 +268,7 @@ code { background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-si
 
 /* ---------- QR 인쇄 ---------- */
 .qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.qr-grid.single { grid-template-columns: minmax(0, 420px); justify-content: center; }
 .qr-card { text-align: center; }
 .qr-box { display: inline-block; padding: 12px; background: #fff; border-radius: 8px; }
 .qr-box img, .qr-box canvas { display: block; }

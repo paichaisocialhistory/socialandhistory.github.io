@@ -15,18 +15,12 @@
     <div class="card no-print">
       <p class="lead" style="margin:0">학생에게 보여 주거나 인쇄해서 나눠 주세요. 이 화면에서 <b>Ctrl + P</b>를 누르면 QR만 인쇄됩니다.</p>
     </div>
-    <div class="qr-grid">
+    <div class="qr-grid single">
       <section class="card qr-card">
-        <p class="kicker">60분 코스 · 6곳</p>
+        <p class="kicker">6곳 · 사진 미션 6개 · 퀴즈</p>
         <h1 class="title">🏯 성균관 역사 투어</h1>
-        <div class="qr-box" id="qrFull"></div>
-        <p class="qr-url" id="urlFull"></p>
-      </section>
-      <section class="card qr-card">
-        <p class="kicker">30분 코스 · 4곳</p>
-        <h1 class="title">🏯 성균관 역사 투어</h1>
-        <div class="qr-box" id="qrShort"></div>
-        <p class="qr-url" id="urlShort"></p>
+        <div class="qr-box" id="qr"></div>
+        <p class="qr-url" id="url"></p>
       </section>
     </div>
   </main>
@@ -34,14 +28,12 @@
   <script>
     (function () {
       var base = location.href.replace(/[?#].*$/, '').replace(/qr\.html$/, '');
-      [['Full', base + '?course=full'], ['Short', base + '?course=short']].forEach(function (p) {
-        document.getElementById('url' + p[0]).textContent = p[1];
-        if (window.QRCode) {
-          new QRCode(document.getElementById('qr' + p[0]), { text: p[1], width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
-        } else {
-          document.getElementById('qr' + p[0]).textContent = 'QR 코드를 만들지 못했어요. 인터넷 연결을 확인해 주세요.';
-        }
-      });
+      document.getElementById('url').textContent = base;
+      if (window.QRCode) {
+        new QRCode(document.getElementById('qr'), { text: base, width: 280, height: 280, correctLevel: QRCode.CorrectLevel.M });
+      } else {
+        document.getElementById('qr').textContent = 'QR 코드를 만들지 못했어요. 인터넷 연결을 확인해 주세요.';
+      }
     })();
   </script>
 </body>
