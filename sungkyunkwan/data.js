@@ -35,7 +35,7 @@ window.TOUR = {
           id: 'tangpyeong',
           title: '탕평비 인증샷',
           label: '탕평비',
-          guide: '탕평비 비석 전체가 보이게, 우리 모둠이 함께 나오도록 찍어요.',
+          guide: '탕평비 비석 전체가 보이게, 나도 함께 나오도록 찍어요. (셀카도 좋아요)',
         },
       ],
       sources: [
