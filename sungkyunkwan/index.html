@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>성균관 역사 투어</title>
+  <meta name="description" content="성균관을 걸으며 사진 미션을 해결하고 퀴즈를 푸는 중학교 역사 현장 학습">
+  <meta name="theme-color" content="#2b2a26">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏯</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">🏯 <span>성균관 역사 투어</span></a>
+    <div id="who" class="who" hidden>
+      <span id="whoText"></span>
+      <button id="logoutBtn" class="btn-link" type="button">로그아웃</button>
+    </div>
+  </header>
+  <div id="demoBanner" class="banner" hidden>체험 모드: 선생님 연결 주소가 아직 없어서 사진이 전송되지 않아요.</div>
+
+  <main id="app" aria-live="polite"></main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
