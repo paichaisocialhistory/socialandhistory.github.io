@@ -8,6 +8,7 @@
   const STORE = 'skk-tour-v1';
   const app = document.getElementById('app');
 
+  const prize = () => (CFG.PRIZE_TEXT ? `<div class="notice prize">${esc(CFG.PRIZE_TEXT)}</div>` : '');
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // ---------- 저장 ----------
@@ -114,6 +115,7 @@
         <p class="kicker">현장 학습 · ${T.stops.length}곳 · 약 60분</p>
         <h1 class="title">${esc(T.title)}</h1>
         <p class="lead">${esc(T.intro)}</p>
+        ${prize()}
         <form id="loginForm" class="form" autocomplete="off" novalidate>
           <label>학번
             <input name="studentNo" inputmode="numeric" pattern="[0-9]*" maxlength="6" required placeholder="30105">
@@ -162,6 +164,7 @@
         </div>
         <p class="progress-text"><b>${done}</b> / ${total} 사진 완료 ${allDone() ? '· 퀴즈가 열렸어요!' : '· 모두 찍으면 퀴즈가 열려요'}</p>
       </section>
+      ${prize()}
       ${redo.length ? `<div class="notice warn">🔁 선생님이 다시 찍어 달라고 했어요: ${redo.map((m) => `<a href="#/stop/${m.stop.id}">${esc(m.title)}</a>`).join(', ')}</div>` : ''}
       <ol class="stops">
         ${stops().map((s) => stopCard(s)).join('')}
@@ -250,6 +253,7 @@
         <p class="kicker">📷 사진 미션</p>
         <h2 class="h2">${esc(m.title)}</h2>
         <p class="guide">${esc(m.guide)}</p>
+        ${CFG.PRIZE_TEXT ? `<p class="prize-line">${esc(CFG.PRIZE_TEXT)}</p>` : ''}
         ${thumb ? `<img class="preview" src="${thumb}" alt="${esc(m.title)} 사진">` : p.uploaded ? '<div class="preview empty">제출한 사진은 선생님께 저장되어 있어요</div>' : ''}
         ${status}
         <label class="btn ${p.uploaded && p.status !== '다시찍기' ? '' : 'primary'} big camera ${busy ? 'disabled' : ''}">
