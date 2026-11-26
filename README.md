@@ -73,6 +73,7 @@ CLI 없이: 대시보드 → SQL Editor 에서 아래 순서로 붙여넣고 실
 | 6 | `20261101000000_video_sync_offset.sql` | 카메라 여러 대의 시간 맞추기(킥오프 위치) |
 | 7 | `20261103000000_staff_only_player_registration.sql` | 선수 등록을 교직원 전용으로, 명단 일괄 등록 |
 | 8 | `20261105000000_password_setup_flow.sql` | 첫 로그인 때 학생이 직접 비밀번호 설정 |
+| 9 | `20261126000000_admin_direct_ability_edit.sql` | 관리자가 능력치를 승인 없이 바로 수정 |
 
 2·3단계 마이그레이션은 기능 플래그와 무관하게 미리 적용해도 안전합니다.
 플래그를 끄면 애플리케이션이 해당 화면을 노출하지 않을 뿐입니다.
@@ -247,9 +248,18 @@ Supabase 무료 프로젝트는 **7일간 API 요청이 없으면 자동 일시�
 `/admin/players` 의 승인 화면은 남아 있습니다. 예전에 들어온 신청서나 반려된
 건을 처리할 때만 쓰이며, 평소에는 비어 있습니다.
 
-### 6.3 능력치 변경 승인 (2단계)
+### 6.3 능력치 수정 (2단계)
 
-1. 로그인한 교사가 능력치 제안 → `ability_change_requests` 에 `pending` 으로 저장
+누가 고치느냐에 따라 경로가 둘입니다.
+
+**관리자** — `/players/[student_no]` 에서 **바로 고칩니다.** 승인 단계가 없습니다.
+자기 제안을 스스로 승인하는 건 형식뿐이기 때문입니다. 바로 고친 내용도
+`ability_change_requests` 에 승인된 기록으로 남아 이력이 끊기지 않습니다
+(`review_note = '관리자 직접 수정'`).
+
+**관리자가 아닌 교직원** — 종전대로 제안 → 승인입니다.
+
+1. 교사가 능력치 제안 → `ability_change_requests` 에 `pending` 으로 저장
    (이 시점에는 `player_abilities` 에 **반영되지 않음**)
 2. 관리자 승인 → `player_abilities` 에 upsert + 요청에 `reviewed_by`/`reviewed_at` 기록
    / 반려 → 요청 상태만 `rejected`, 능력치는 그대로
@@ -327,7 +337,7 @@ Supabase 무료 프로젝트는 **7일간 API 요청이 없으면 자동 일시�
 |---|---|---|
 | `teams`, `matches` | 전체 공개 | 관리자만 |
 | `players` | `status='approved'` 행만 공개 / 대기·반려는 관리자만 | 등록은 교직원만, 수정·삭제는 관리자만 |
-| `player_abilities` | 승인된 선수만 공개 | 직접 쓰기 불가 (승인 함수 경유만) |
+| `player_abilities` | 승인된 선수만 공개 | 직접 쓰기 불가 (관리자 수정 함수 또는 승인 함수 경유만) |
 | `player_season_stats` | 승인된 선수만 공개 | 관리자만 |
 | `ability_change_requests` | 로그인한 교사 | insert 는 교사, 승인 처리(update)는 관리자만 |
 | `videos` | 로그인한 교직원·학생 | 관리자만 |

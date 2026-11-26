@@ -126,3 +126,38 @@ export async function requestAbilityChange(formData: FormData): Promise<ActionSt
   revalidatePlayer(text(formData, 'student_no'));
   return ok('능력치 변경을 요청했습니다. 관리자 승인 후 반영됩니다.');
 }
+
+/**
+ * [2단계] 관리자가 능력치를 바로 고친다.
+ *
+ * 교사의 제안 → 관리자 승인 경로는 그대로 두고, 관리자만 이 경로를 쓴다.
+ * 바로 고친 내용도 DB 함수가 이력에 승인된 기록으로 남긴다.
+ */
+export async function setAbilities(formData: FormData): Promise<ActionState> {
+  if (!getFeatures().playerAbilities) return fail('사용할 수 없는 기능입니다.');
+  if (!(await isAdmin())) return fail('관리자만 능력치를 바로 수정할 수 있습니다.');
+
+  const id = text(formData, 'id');
+  if (!id) return fail('선수를 찾을 수 없습니다.');
+
+  const abilities: Record<AbilityKey, number> = {} as Record<AbilityKey, number>;
+  for (const key of ABILITY_KEYS) {
+    const value = integer(formData, key);
+    if (value === null || value < 1 || value > 5) {
+      return fail('능력치는 1~5 사이의 정수로 입력하세요.');
+    }
+    abilities[key] = value;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc('set_player_abilities', {
+    p_player_id: id,
+    p_abilities: abilities,
+  });
+
+  if (error) return fail(describeError(error));
+
+  revalidatePath('/admin/abilities');
+  revalidatePlayer(text(formData, 'student_no'));
+  return ok('능력치를 저장했습니다.');
+}

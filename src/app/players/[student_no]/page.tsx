@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createSupabaseServerClient, getCurrentUser, isAdmin, isStaff } from '@/lib/supabase/server';
-import { Alert, Card, EmptyState, PageHeader, StatusBadge } from '@/components/ui';
+import { Card, EmptyState, PageHeader, StatusBadge } from '@/components/ui';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/submit-button';
 import { AbilityBars } from '@/components/ability-bars';
@@ -22,7 +22,7 @@ import {
   type PlayerWithTeam,
   type Team,
 } from '@/lib/types';
-import { requestAbilityChange, saveCoachNote, saveSeasonStats, updatePlayer } from './actions';
+import { requestAbilityChange, saveCoachNote, saveSeasonStats, setAbilities, updatePlayer } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -307,15 +307,51 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
 
         {features.playerAbilities ? (
           <div className="space-y-5">
-            <Card title="능력치" description="관리자가 승인한 값만 표시됩니다.">
+            <Card
+              title="능력치"
+              description={admin ? '고치면 바로 반영되고 이력에 남습니다.' : '관리자가 승인한 값만 표시됩니다.'}
+            >
               {abilities ? (
                 <>
                   <AbilityBars values={abilities} />
                   <p className="muted mt-3 text-xs">최종 반영: {formatDateTime(abilities.updated_at)}</p>
                 </>
               ) : (
-                <EmptyState>아직 승인된 능력치가 없습니다.</EmptyState>
+                <EmptyState>아직 등록된 능력치가 없습니다.</EmptyState>
               )}
+
+              {admin ? (
+                <ActionForm
+                  action={setAbilities}
+                  className="mt-4 space-y-3 border-t pt-4"
+                >
+                  <input type="hidden" name="id" value={player.id} />
+                  <input type="hidden" name="student_no" value={player.student_no ?? ''} />
+
+                  <div className="grid grid-cols-5 gap-2">
+                    {ABILITY_KEYS.map((key) => (
+                      <div key={key}>
+                        <label className="label !text-xs" htmlFor={`set-${key}`}>
+                          {ABILITY_LABEL[key]}
+                        </label>
+                        <input
+                          id={`set-${key}`}
+                          name={key}
+                          type="number"
+                          min={1}
+                          max={5}
+                          required
+                          className="field !px-2"
+                          defaultValue={abilities?.[key] ?? 3}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <SubmitButton pendingLabel="저장 중…">능력치 저장</SubmitButton>
+                  <p className="muted text-xs">1~5점. 관리자는 승인 절차 없이 바로 반영됩니다.</p>
+                </ActionForm>
+              ) : null}
             </Card>
 
             <Card title="시즌 기록">
@@ -379,7 +415,7 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
               </Card>
             ) : null}
 
-            {staff ? (
+            {staff && !admin ? (
               <Card title="능력치 변경 제안" description="제안은 관리자 승인 후에만 반영됩니다.">
                 <ActionForm action={requestAbilityChange} className="space-y-3">
                   <input type="hidden" name="id" value={player.id} />
@@ -408,25 +444,29 @@ export default async function PlayerDetailPage({ params }: { params: Params }) {
                   <SubmitButton pendingLabel="요청 중…">변경 요청</SubmitButton>
                 </ActionForm>
 
-                {requests.length > 0 ? (
-                  <ul className="muted mt-4 space-y-1.5 border-t pt-3 text-xs">
-                    {requests.map((request) => (
-                      <li key={request.id} className="flex items-center gap-2">
-                        <StatusBadge status={request.status} />
-                        <span>
-                          {ABILITY_KEYS.map((key) => request.proposed_abilities[key]).join('/')}
-                        </span>
-                        <span className="ml-auto">{formatDateTime(request.requested_at)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
               </Card>
-            ) : (
-              <Alert kind="info">
-                능력치 제안은 교직원 계정만 할 수 있습니다.
-              </Alert>
-            )}
+            ) : null}
+
+            {staff && requests.length > 0 ? (
+              <Card
+                title="능력치 변경 이력"
+                description={`최근 ${requests.length}건 · 슛/드리블/패스/체력/수비 순`}
+              >
+                <ul className="muted space-y-1.5 text-xs">
+                  {requests.map((request) => (
+                    <li key={request.id} className="flex items-center gap-2">
+                      <StatusBadge status={request.status} />
+                      <span className="tabular-nums">
+                        {ABILITY_KEYS.map((key) => request.proposed_abilities[key]).join('/')}
+                      </span>
+                      <span className="ml-auto whitespace-nowrap">
+                        {request.requested_by ?? '알 수 없음'} · {formatDateTime(request.requested_at)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
           </div>
         ) : null}
       </div>

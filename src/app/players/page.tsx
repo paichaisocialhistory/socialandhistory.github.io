@@ -43,7 +43,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
     <>
       <PageHeader
         title="선수 데이터베이스"
-        description="학번은 입학 연도 기준으로 발급되며 재학 3년간 같은 번호로 기록이 누적됩니다."
+        description="이름을 누르면 선수의 능력치와 시즌 기록을 볼 수 있습니다."
       />
 
       {error ? <Alert kind="error">선수 목록을 불러오지 못했습니다: {error.message}</Alert> : null}
@@ -135,7 +135,18 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
                         <span className="muted">미발급</span>
                       )}
                     </td>
-                    <td className="font-medium">{player.name}</td>
+                    <td className="font-medium">
+                      {player.student_no ? (
+                        <Link
+                          href={`/players/${player.student_no}`}
+                          className="underline underline-offset-2"
+                        >
+                          {player.name}
+                        </Link>
+                      ) : (
+                        player.name
+                      )}
+                    </td>
                     <td className="muted">
                       {[player.grade && `${player.grade}학년`, player.class_no && `${player.class_no}반`, player.number && `${player.number}번`]
                         .filter(Boolean)
