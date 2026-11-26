@@ -5,7 +5,7 @@
 window.TOUR_CONFIG = {
   // Google Apps Script 웹 앱 URL (…/exec)
   // 비워 두면 '체험 모드'로 동작합니다. (사진이 선생님께 전송되지 않음, 미리 보기용)
-  SCRIPT_URL: '',
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxkFRVnJ9YwwbRoANHplDVxxExYbtNHrnAVpJQQFeFguNj9car4Em6sBJKUYUvY5LoFzQ/exec',
 
   // 기본 코스: 'full' (60분, 6곳) 또는 'short' (30분, 4곳)
   // 주소 끝에 ?course=short 를 붙이면 그 주소로 들어온 학생은 30분 코스가 됩니다. (qr.html에서 두 QR을 모두 만들 수 있음)
